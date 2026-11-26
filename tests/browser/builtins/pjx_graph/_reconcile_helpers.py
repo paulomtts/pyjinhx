@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""Asset paths, JS snippets and regexes for the pjx_graph reconcile tests."""
 
 from __future__ import annotations
 

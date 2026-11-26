@@ -1,4 +1,4 @@
-"""Fixtures shared by the split test files in this folder."""
+"""The `tree` fixture for the manifest tests."""
 
 import pytest
 

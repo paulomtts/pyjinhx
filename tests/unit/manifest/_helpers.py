@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""Component sources, grammar loader and entry accessors for the manifest tests."""
 
 import json
 import sys

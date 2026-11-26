@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""The declared internal import edge table and the helpers that read it."""
 
 import ast
 from pathlib import Path

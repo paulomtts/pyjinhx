@@ -1,4 +1,4 @@
-"""Fixtures shared by the split test files in this folder."""
+"""The `mro_dir` fixture for the ClassDescriptor tests."""
 
 import sys
 import types

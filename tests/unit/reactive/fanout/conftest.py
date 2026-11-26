@@ -1,4 +1,4 @@
-"""Fixtures shared by the split test files in this folder."""
+"""Registry and spy resets for the fanout tests."""
 
 import dataclasses
 
@@ -99,8 +99,9 @@ def _clean_registries(tmp_path, monkeypatch):
         ],
     )
     # `_resolve_template_path` walks the class's *defining module's* directory
-    # (this test file's dir), not `template_dir` passed to `build_registry` —
-    # the two are deliberately different concerns (tag lookup vs. file probe).
+    # (`fanout/_helpers.py`, where the widget classes live), not `template_dir`
+    # passed to `build_registry` — the two are deliberately different concerns
+    # (tag lookup vs. file probe).
     # Point each descriptor's `template_path` at this test's tmp_path file, the
     # same way tests/unit/rendering/pipeline/test_integration.py does, so render_level()
     # finds a real file instead of falling back to an ancestor's unprobed guess.

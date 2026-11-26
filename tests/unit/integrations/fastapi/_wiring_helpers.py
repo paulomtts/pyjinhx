@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""The Greeting component and settings builder for the FastAPI wiring tests."""
 
 from pathlib import Path
 

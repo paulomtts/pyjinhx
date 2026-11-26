@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""Widget classes and spies for the fanout tests."""
 
 import threading
 from typing import Annotated

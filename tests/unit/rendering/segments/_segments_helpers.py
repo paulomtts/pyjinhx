@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""Level and child-ref builders for the segment tests."""
 
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 

@@ -1,4 +1,4 @@
-"""Helpers shared by the split test files in this folder."""
+"""The loaded fold_components script and the write/run/render helpers for its tests."""
 
 import importlib
 import importlib.util
