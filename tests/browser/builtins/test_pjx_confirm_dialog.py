@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-import pytest
+from typing import TYPE_CHECKING
 
 from pyjinhx.client import read_pjx_theme_css
 
@@ -31,18 +29,6 @@ BODY = (
     "</div>"
     "</dialog>"
 )
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
 
 
 def _open(page: Page, head: str = "", html_attrs: str = "", after: str = "") -> None:

@@ -9,9 +9,7 @@ the panel's absolute positioning relative to it unchanged and every
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-import pytest
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
@@ -58,18 +56,6 @@ BOXED = """
 
 PORTAL = BOXED.replace("PORTAL", "data-pjx-select-portal")
 NO_PORTAL = BOXED.replace(" PORTAL", "")
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
 
 
 def _load(page: Page, markup: str) -> None:

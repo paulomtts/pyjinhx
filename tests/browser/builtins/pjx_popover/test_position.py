@@ -25,20 +25,6 @@ SOURCE = (
 )
 
 
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    # Function-scoped so a missing browser skips only the tests that ask for
-    # a page, mirroring tests/browser/conftest.py.
-    if "position" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
-
-
 @pytest.fixture
 def position(page: Page) -> Iterator[Callable[..., dict[str, Any]]]:
     """Call popoverPosition in the browser and hand back its plain-object result."""

@@ -6,7 +6,7 @@ The field and markup checks are in tests/unit/builtins/test_pjx_chip_input.py.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -86,18 +86,6 @@ SOURCE = (
     / "pjx_chip_input"
     / "pjx_chip_input.js"
 )
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    if "chip_page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
 
 
 @pytest.fixture

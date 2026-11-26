@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -40,18 +40,6 @@ DARK_SURFACE = "#18181b"
 # Copied from tests/browser/conftest.py: that conftest only
 # covers its own directory, and the tests tree has no __init__.py files, so
 # test modules cannot import each other reliably.
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
-
-
 @pytest.fixture
 def page_errors(page: Page) -> list[str]:
     """Every uncaught error the page throws from here on."""
