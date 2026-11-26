@@ -26,7 +26,7 @@ from pyjinhx.rendering.session import request_scope
 
 ENTRY_COUNTS = (500, 1000, 2000, 4000, 8000)
 
-# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# CI runs these only to prove they still execute (tests/scripts/test_bench.py);
 # timings are meaningless at one point, so the sweep collapses to its smallest.
 if os.environ.get("PJX_BENCH_SMOKE"):
     ENTRY_COUNTS = ENTRY_COUNTS[:1]

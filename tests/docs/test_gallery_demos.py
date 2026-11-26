@@ -1,0 +1,504 @@
+"""The docs demo registry stays complete and every demo renders (ported from v0.x for #540)."""
+
+import dataclasses
+import re
+import sys
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+import pyjinhx.builtins  # noqa: F401
+
+DOCS = Path(__file__).resolve().parents[2] / "docs"
+sys.path.insert(0, str(DOCS))
+
+import hooks
+from demos import DEMOS
+
+from pyjinhx.client import read_pjx_theme_css
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.config import (
+    PjxSettings,
+    configure_pyjinhx,
+    current_settings,
+    shutdown_pyjinhx,
+)
+
+
+def theme_tag() -> str:
+    """Return the exact theme block every demo page must carry."""
+    return f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+
+
+# Copied from tests/unit/client/test_inject.py: the tests tree
+# has no __init__.py files, so test modules cannot import each other reliably.
+@pytest.fixture
+def themed() -> Iterator[None]:
+    configure_pyjinhx(PjxSettings(theme="default"))
+    # Teardown after yield runs even when the test fails, so the theme never
+    # leaks into a later test that expects the default settings.
+    yield
+    shutdown_pyjinhx()
+
+
+class FakeFile:
+    src_path = "components.md"
+
+
+class FakePage:
+    file = FakeFile()
+    url = "components/"
+
+
+def test_marker_becomes_iframe():
+    out = hooks.on_page_markdown(
+        "intro\n\n<!-- demo: PJXBadge -->\n\nafter",
+        page=FakePage(),
+        config={},
+        files=None,
+    )
+    assert '<iframe src="../demos/pjx-badge.html"' in out
+    assert "```python" not in out  # the marker no longer emits a code block
+
+
+def test_unknown_demo_fails_build():
+    with pytest.raises(ValueError, match="Nope"):
+        hooks.on_page_markdown(
+            "<!-- demo: Nope -->", page=FakePage(), config={}, files=None
+        )
+
+
+def test_post_build_writes_selfcontained_pages(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-badge.html").read_text()
+    assert "pjx-badge" in page
+    assert "demo-base.css" in page
+    assert (tmp_path / "demos" / "demo-base.css").exists()
+
+
+def test_every_factory_renders():
+    from pyjinhx.rendering.session import request_scope
+
+    for name, (factory, height) in DEMOS.items():
+        with request_scope():
+            markup = hooks.demo_markup(factory())
+        assert markup.strip(), name
+        assert isinstance(height, int), name
+
+
+def test_post_build_inlines_component_css(tmp_path):
+    from pyjinhx.builtins.pjx_button import PJXButton
+    from pyjinhx.rendering.assets import BUILTIN_ORIGIN_ATTR, asset_token
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-button.html").read_text()
+    css_paths = PJXButton.__pjx_descriptor__.css_paths
+    assert css_paths, "PJXButton is expected to carry at least one stylesheet"
+    for p in css_paths:
+        token = asset_token(Path(p))
+        assert (
+            f'<style data-pjx-asset="{token}"{BUILTIN_ORIGIN_ATTR}>'
+            f"{Path(p).read_text()}</style>" in page
+        )
+
+
+def test_post_build_inlines_component_js(tmp_path):
+    from pyjinhx.builtins.pjx_accordion_group import PJXAccordionGroup
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-accordion-group.html").read_text()
+    js_paths = PJXAccordionGroup.__pjx_descriptor__.js_paths
+    assert js_paths, "PJXAccordionGroup is expected to carry a script"
+    for p in js_paths:
+        assert f"<script>{Path(p).read_text()}</script>" in page
+
+
+def test_multi_component_demo_emits_each_asset_once(tmp_path):
+    from pyjinhx.builtins.pjx_spinner import PJXSpinner
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-spinner.html").read_text()
+    (css_path,) = PJXSpinner.__pjx_descriptor__.css_paths
+    text = Path(css_path).read_text()
+    assert page.count(text) == 1  # three spinners, one stylesheet
+    # Count component blocks only: the page also carries the theme's
+    # <style id="pjx-theme">, which is not a component asset.
+    assert page.count("<style data-pjx-asset=") == len(
+        set(PJXSpinner.__pjx_descriptor__.css_paths)
+    )
+
+
+def test_base_css_link_survives_and_output_is_stable(tmp_path):
+    import itertools
+
+    import pyjinhx.components.base as component_mod
+
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    # auto_id draws from a process-wide counter, so it must be rewound
+    # between the two builds here to imitate two separate `mkdocs build`
+    # processes, each starting fresh — otherwise the second build's ids
+    # would trail the first's by however many components got rendered,
+    # which is a test-harness artifact, not the nondeterminism this guards.
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(first)})
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(second)})
+    page_a = (first / "demos" / "pjx-button.html").read_text()
+    page_b = (second / "demos" / "pjx-button.html").read_text()
+    assert '<link rel="stylesheet" href="demo-base.css">' in page_a
+    assert page_a == page_b
+
+
+def test_missing_asset_file_fails_the_build(tmp_path, monkeypatch):
+    class BrokenDemo(BaseComponent):
+        content: str = "x"
+
+    # Point the frozen descriptor at a file that does not exist: emit_assets
+    # must raise rather than write an unstyled page.
+    descriptor = BrokenDemo.__pjx_descriptor__
+    broken = dataclasses.replace(descriptor, css_paths=(tmp_path / "nope.css",))
+    monkeypatch.setattr(BrokenDemo, "__pjx_descriptor__", broken)
+    monkeypatch.setitem(hooks.DEMOS, "BrokenDemo", (lambda: BrokenDemo().render(), 100))
+
+    with pytest.raises(OSError):
+        hooks.on_post_build({"site_dir": str(tmp_path / "site")})
+
+
+def test_gallery_page_features_every_demo():
+    """components.md must feature every builtin that has a demo (DEMOS key).
+
+    The page is hand-curated (one `## Name` section + `<!-- demo: Name -->` per
+    builtin), so a new builtin's demo could be missing from it. This guards it.
+    """
+    page = (DOCS / "components.md").read_text(encoding="utf-8")
+    featured = set(re.findall(r"<!--\s*demo:\s*([A-Za-z]+)\s*-->", page))
+    missing = sorted(set(DEMOS) - featured)
+    assert not missing, (
+        "docs/components.md is missing a `<!-- demo: Name -->` for these demo'd "
+        f"builtins: {missing}"
+    )
+
+
+def test_demo_markup_wraps_in_stage():
+    assert hooks.demo_markup("<b>x</b>") == '<div class="pjx-demo-stage"><b>x</b></div>'
+    row = hooks.demo_markup(["<b>x</b>", "<i>y</i>"])
+    assert 'class="pjx-demo-stage pjx-demo-stage--row"' in row
+    assert "<b>x</b>" in row and "<i>y</i>" in row
+
+
+def test_all_demo_factories_render(tmp_path):
+    from pyjinhx.rendering.session import request_scope
+
+    for name, (factory, _h) in DEMOS.items():
+        with request_scope():
+            markup = hooks.demo_markup(factory())
+        assert "pjx-demo-stage" in markup, name
+        assert markup.strip(), name
+
+
+def test_dropdown_demo_menu_entries_are_not_escaped():
+    """The gallery's dropdown showed literal &lt;button&gt; text: it passed markup as str items (#695)."""
+    from demos.interaction import dropdown
+
+    from pyjinhx.rendering.session import request_scope
+
+    with request_scope():
+        html = dropdown()
+
+    assert "&lt;button&gt;" not in html
+    assert "Edit" in html
+    assert html.count("<button") >= 4  # the trigger plus three menu entries
+
+
+def test_graph_demo_renders_the_pipeline_stage():
+    from demos.graph import graph
+
+    from pyjinhx.rendering.session import request_scope
+
+    assert "PJXGraph" in DEMOS
+    with request_scope():
+        html = graph()
+
+    assert "data-pjx-graph " in html
+    assert "data-pjx-graph-storage-key" not in html  # no persistence
+    assert 'id="demo-graph-edges"' in html
+    assert html.count("data-pjx-graph-edge ") == 2
+    steps = ["trigger", "fetch", "transform", "store"]
+    assert re.findall(r'data-node-id="([^"]+)"', html) == steps
+    assert re.findall(r'<template data-demo-panel="([^"]+)"', html) == steps
+    assert 'id="demo-graph-panel"' in html
+    assert 'data-pjx-graph-panel data-open="false"' in html
+    assert "data-pjx-graph-controls" in html
+    # The in-page stand-in for the app's routes. (Counting <script> tags would
+    # not work: each render() here appends its own asset scripts.)
+    assert html.count('addEventListener("pjx:graph:wire"') == 1
+
+
+def test_roster_picker_demo_renders_three_pickers():
+    from demos.roster_picker import PEOPLE, roster_picker
+
+    from pyjinhx.rendering.session import request_scope
+
+    assert "PJXRosterPicker" in DEMOS
+    with request_scope():
+        html = roster_picker()
+
+    pickers = ["demo-roster-team", "demo-roster-owner", "demo-roster-approvers"]
+    roots = re.findall(
+        r'<div id="([^"]+)" class="pjx-roster-picker" data-pjx-roster-picker'
+        r' data-name="[^"]+" data-max-items="(\d+)"',
+        html,
+    )
+    assert roots == [(pickers[0], "0"), (pickers[1], "1"), (pickers[2], "3")]
+    # Only a picker's own chips post under its name: the chips inside the
+    # result rows' templates carry an empty name until a pick gives them one.
+    names = ("team", "owner", "approvers")
+    assert [html.count(f' name="{name}"') for name in names] == [1, 1, 2]
+    assert html.count('hx-get="/demo/people" hx-trigger="input delay:300ms') == 3
+    # What the in-page route answers from, kept inert for each picker.
+    assert re.findall(r'<template data-demo-roster-page="([^"]+)"', html) == pickers
+    assert re.findall(r'<template data-demo-roster-empty="([^"]+)"', html) == pickers
+    assert html.count("data-pjx-roster-pick ") == len(pickers) * len(PEOPLE)
+    # The in-page stand-in for the app's search route. (Counting <script> tags
+    # would not work: each render() here appends its own asset scripts.)
+    assert html.count("<script data-demo-roster-route>") == 1
+
+
+def test_chart_demo_renders_a_line_and_a_bar_chart():
+    from pyjinhx.rendering.session import request_scope
+
+    factory, _height = DEMOS["PJXChart"]
+    with request_scope():
+        html = hooks.demo_markup(factory())
+
+    assert "pjx-demo-stage--row" in html
+    assert html.count('class="pjx-chart pjx-chart--line"') == 1
+    assert html.count('class="pjx-chart pjx-chart--bar"') == 1
+
+
+def test_runtime_demos_are_registered_demos():
+    from demos import RUNTIME_DEMOS
+
+    assert RUNTIME_DEMOS == {"PJXGraph", "PJXRosterPicker"}
+    assert RUNTIME_DEMOS <= set(DEMOS)
+
+
+def test_post_build_gives_the_graph_page_the_runtime_once_in_the_body(tmp_path):
+    from pyjinhx.builtins.pjx_graph import PJXGraph
+    from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-graph.html").read_text()
+    (js_path,) = PJXGraph.__pjx_descriptor__.js_paths
+    graph_script = f"<script>{Path(js_path).read_text()}</script>"
+    assert page.count(graph_script) == 1
+    assert page.count(read_vendored_htmx()) == 1
+    assert page.count('<style id="pjx-style">') == 1
+    # pjx.js reads document.body as it runs, so the runtime cannot sit in <head>.
+    runtime = page.index(read_pjx_runtime())
+    assert page.index("<body>") < runtime < page.index(graph_script)
+
+
+def test_post_build_gives_the_roster_picker_page_the_runtime_once_in_the_body(
+    tmp_path,
+):
+    from pyjinhx.builtins.pjx_roster_picker import PJXRosterPicker
+    from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    page = (tmp_path / "demos" / "pjx-roster-picker.html").read_text()
+    (js_path,) = PJXRosterPicker.__pjx_descriptor__.js_paths
+    picker_script = f"<script>{Path(js_path).read_text()}</script>"
+    assert page.count(picker_script) == 1
+    assert page.count(read_vendored_htmx()) == 1
+    assert page.count('<style id="pjx-style">') == 1
+    runtime = page.index(read_pjx_runtime())
+    assert page.index("<body>") < runtime < page.index(picker_script)
+    # The route's script sits in the markup, ahead of the picker's script,
+    # which is why it waits for DOMContentLoaded to listen.
+    assert page.index("<script data-demo-roster-route>") < page.index(picker_script)
+
+
+def test_post_build_leaves_the_runtime_off_every_other_page(tmp_path):
+    from demos import RUNTIME_DEMOS
+
+    from pyjinhx.client import read_vendored_htmx
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    htmx_source = read_vendored_htmx()
+    runtime_pages = {
+        f"{hooks.pascal_case_to_kebab_case(name)}.html" for name in RUNTIME_DEMOS
+    }
+    for path in (tmp_path / "demos").glob("*.html"):
+        if path.name in runtime_pages:
+            continue
+        page = path.read_text()
+        assert 'id="pjx-style"' not in page, path.name
+        assert htmx_source not in page, path.name
+
+
+@pytest.mark.parametrize("name", ["pjx-graph.html", "pjx-roster-picker.html"])
+def test_runtime_page_output_is_stable(tmp_path, name):
+    import itertools
+
+    import pyjinhx.components.base as component_mod
+
+    first = tmp_path / "a"
+    second = tmp_path / "b"
+    # Rewound for the same reason as in the button stability test above: two
+    # separate `mkdocs build` processes each start the counter fresh.
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(first)})
+    component_mod._auto_id_counter = itertools.count(1)
+    hooks.on_post_build({"site_dir": str(second)})
+    page_a = (first / "demos" / name).read_text()
+    page_b = (second / "demos" / name).read_text()
+    assert page_a == page_b
+
+
+# Copied from tests/unit/builtins/theme_tokens/test_stylesheets.py: the tests tree has no
+# __init__.py files, so test modules cannot import each other reliably.
+ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
+DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")
+LEGACY_NAME = re.compile(
+    r"(?<![\w-])--(?:"
+    r"surface(?:-alt|-hover)?|text(?:-muted)?|border(?:-focus)?"
+    r"|brand(?:-subtle|-muted)?|error(?:-bg|-border)?|success|warning"
+    r"|font-size-[\w-]+|radius-[\w-]+|shadow-md|space-\d+|transition"
+    r")(?![\w-])"
+)
+CUSTOM_PROPERTY = re.compile(r"^\s*--[\w-]+\s*:", re.MULTILINE)
+VAR_NAME = re.compile(r"(?<![\w-])var\(\s*(--[\w-]+)")
+
+
+def test_every_demo_page_carries_the_theme_once(tmp_path):
+    settings = current_settings()
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    # The gallery is themed by the build itself, never by global config.
+    assert current_settings() is settings
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    tag = theme_tag()
+    for path in pages:
+        assert path.read_text().count(tag) == 1, path.name
+
+
+def test_theme_precedes_component_and_runtime_styles(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+
+    static = (tmp_path / "demos" / "pjx-button.html").read_text()
+    theme = static.index(tag)
+    assert theme < static.index("<style data-pjx-asset=")
+    assert theme < static.index("</head>")  # static assets stay in <head>
+
+    runtime = (tmp_path / "demos" / "pjx-graph.html").read_text()
+    theme = runtime.index(tag)
+    # Runtime assets, theme included, sit at the end of <body> for pjx.js.
+    assert runtime.index("<body>") < theme
+    assert theme < runtime.index('<style id="pjx-style">')
+    assert theme < runtime.index("<style data-pjx-asset=")
+
+
+def test_runtime_page_has_one_theme_under_theme_default(tmp_path, themed):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    tag = theme_tag()
+    for name in ("pjx-graph.html", "pjx-button.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(tag) == 1, name
+
+
+def test_demo_base_css_defines_no_custom_properties(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    assert CUSTOM_PROPERTY.findall(css) == []
+    assert LEGACY_NAME.findall(css) == []  # comments included
+
+
+def test_demo_base_css_reads_only_defined_theme_tokens(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    css = (tmp_path / "demos" / "demo-base.css").read_text()
+    root = ROOT.search(read_pjx_theme_css())
+    assert root is not None, f"token block not found: {ROOT.pattern}"
+    defined = {name for name, _value in DECLARATION.findall(root.group(1))}
+    used = set(VAR_NAME.findall(css))
+    assert {"--pjx-color-surface", "--pjx-color-text"} <= used
+    assert used - defined == set()
+
+
+THEME_SELECT = "<select data-pjx-demo-theme "
+THEME_INIT = "<script data-pjx-demo-theme-init>"
+
+
+def test_every_demo_page_has_one_theme_toggle(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    pages = sorted((tmp_path / "demos").glob("*.html"))
+    assert len(pages) == len(DEMOS)  # an empty glob must not pass vacuously
+    for path in pages:
+        page = path.read_text()
+        # Count the tag, not the bare attribute: the init script's marker and
+        # its querySelector string both contain "data-pjx-demo-theme" too.
+        assert page.count(THEME_SELECT) == 1, path.name
+        assert page.count('aria-label="Theme"') == 1, path.name
+        # The control is the first thing in <body>, ahead of the demo.
+        assert f"<body>\n{THEME_SELECT}" in page, path.name
+        select = page[page.index(THEME_SELECT) : page.index("</select>")]
+        options = re.findall(r'<option value="(\w+)">(\w+)</option>', select)
+        assert options == [
+            ("system", "System"),
+            ("light", "Light"),
+            ("dark", "Dark"),
+        ], path.name
+
+
+def test_theme_toggle_script_runs_in_head_on_every_page(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    for name in ("pjx-button.html", "pjx-graph.html"):
+        page = (tmp_path / "demos" / name).read_text()
+        assert page.count(THEME_INIT) == 1, name
+        init = page.index(THEME_INIT)
+        # Ahead of every stylesheet, so a stored dark choice never paints light.
+        assert init < page.index("</head>"), name
+        assert init < page.index('<link rel="stylesheet" href="demo-base.css">'), name
+        assert init < page.index('<style id="pjx-theme">'), name
+
+
+def test_typography_demo_shows_every_class():
+    from pyjinhx.client import read_pjx_theme_css
+    from pyjinhx.rendering.session import request_scope
+
+    css = read_pjx_theme_css()
+    block = css[css.index("/* Typography") :]
+    classes = re.findall(r"^\.(pjx-[a-z0-9-]+) \{", block, re.MULTILINE)
+    assert len(classes) == 10, classes
+
+    factory, _height = DEMOS["Typography"]
+    with request_scope():
+        html = str(factory())
+    attributes = [set(a.split()) for a in re.findall(r'class="([^"]*)"', html)]
+    for name in classes:
+        assert any(name in a for a in attributes), name
+    # The modifiers are drawn the way the guide says to use them: next to a size class.
+    assert {"pjx-text", "pjx-text-muted"} in attributes
+    assert {"pjx-text", "pjx-text-mono"} in attributes
+
+
+def test_post_build_gives_the_typography_page_the_sheet_once_in_the_head(tmp_path):
+    from pyjinhx.client import read_pjx_theme_css
+
+    hooks.on_post_build({"site_dir": str(tmp_path)})
+    sheet = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
+    page = (tmp_path / "demos" / "typography.html").read_text()
+    assert page.count(sheet) == 1
+    assert page.index("<head>") < page.index(sheet) < page.index("</head>")
+    assert '<link rel="stylesheet" href="demo-base.css">' in page
+
+
+def test_typography_page_output_is_stable(tmp_path):
+    hooks.on_post_build({"site_dir": str(tmp_path / "a")})
+    hooks.on_post_build({"site_dir": str(tmp_path / "b")})
+    page_a = (tmp_path / "a" / "demos" / "typography.html").read_text()
+    page_b = (tmp_path / "b" / "demos" / "typography.html").read_text()
+    assert page_a == page_b

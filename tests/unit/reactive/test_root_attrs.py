@@ -1,0 +1,694 @@
+"""L3.4 — the reactive on_rendered branch stamps data-pjx-id/data-pjx-hash.
+
+The exhaustive suite (#465) for stamp_reactive_root_attrs and, transitively,
+root_attrs.stamp_root_attrs/_override_tag as reached through a real
+render_level() pass: tag shapes, override-vs-insert, quoting, composition with
+an L0 pass-through stamp, and non-corruption of everything outside root_span.
+Assertions are string-level throughout; the stamp is a splice, never a reparse.
+"""
+
+from pathlib import Path
+
+import pytest
+
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, Slot
+from pyjinhx.reactive.component import ReactiveComponent
+from pyjinhx.reactive.root_attrs import (
+    record_nested_react_keys,
+    stamp_reactive_root_attrs,
+)
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.root_attrs import (
+    RootStampCollisionError,
+    serialize_attr,
+    stamp_root_attrs,
+)
+from pyjinhx.rendering.segments import (
+    ChildRef,
+    RenderedLevel,
+    VerbatimParser,
+    serialize,
+)
+from pyjinhx.rendering.session import RenderSession
+
+_TEMPLATE_DIR = Path(__file__).parents[2] / "fixtures" / "templates"
+
+
+class ReactiveWidget(ReactiveComponent):
+    title: str = "hello"
+
+
+class PlainWidget(BaseComponent):
+    pass
+
+
+def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
+    return ClassDescriptor(
+        template_path=_TEMPLATE_DIR / template,
+        slot_fields=frozenset(),
+        children_field=None,
+        css_paths=(),
+        js_paths=(),
+        strict=True,
+        provenance={"template": cls},
+    )
+
+
+ReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    ReactiveWidget, "reactive/reactive_widget.html"
+)
+PlainWidget.__pjx_descriptor__ = _descriptor_for(
+    PlainWidget, "reactive/plain_widget.html"
+)
+
+
+class VoidWidget(ReactiveComponent):
+    pass
+
+
+class PreStampedWidget(ReactiveComponent):
+    pass
+
+
+class AttrsWidget(ReactiveComponent):
+    pass
+
+
+class QuotingWidget(ReactiveComponent):
+    title: str = 'a "quoted" title'
+
+
+class ReactiveShell(ReactiveComponent):
+    body: Slot = ""
+
+
+VoidWidget.__pjx_descriptor__ = _descriptor_for(
+    VoidWidget, "reactive/reactive_void.html"
+)
+PreStampedWidget.__pjx_descriptor__ = _descriptor_for(
+    PreStampedWidget, "reactive/reactive_prestamped.html"
+)
+AttrsWidget.__pjx_descriptor__ = _descriptor_for(
+    AttrsWidget, "reactive/reactive_attrs.html"
+)
+QuotingWidget.__pjx_descriptor__ = _descriptor_for(
+    QuotingWidget, "reactive/reactive_widget.html"
+)
+ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": ReactiveShell},
+)
+
+
+class KeyedReactiveWidget(ReactiveComponent, react=("a", "b")):
+    pass
+
+
+class UnkeyedReactiveWidget(ReactiveComponent):
+    pass
+
+
+class KeyedReactiveShell(ReactiveComponent, react=("shell",)):
+    body: Slot = ""
+
+
+class PlainShell(BaseComponent):
+    body: Slot = ""
+
+
+KeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    KeyedReactiveWidget, "reactive/reactive_widget.html"
+)
+UnkeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
+    UnkeyedReactiveWidget, "reactive/reactive_widget.html"
+)
+KeyedReactiveShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": KeyedReactiveShell},
+)
+PlainShell.__pjx_descriptor__ = ClassDescriptor(
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
+    slot_fields=frozenset({"body"}),
+    children_field=None,
+    css_paths=(),
+    js_paths=(),
+    strict=True,
+    provenance={"template": PlainShell},
+)
+
+
+class InnerBadge(BaseComponent):
+    pass
+
+
+class MiddleWrap(BaseComponent):
+    pass
+
+
+class BuiltinRootWidget(ReactiveComponent):
+    pass
+
+
+class DoubleBuiltinRootWidget(ReactiveComponent):
+    pass
+
+
+InnerBadge.__pjx_descriptor__ = _descriptor_for(InnerBadge, "reactive/inner_badge.html")
+MiddleWrap.__pjx_descriptor__ = _descriptor_for(MiddleWrap, "reactive/middle_wrap.html")
+BuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
+    BuiltinRootWidget, "reactive/reactive_builtin_root.html"
+)
+DoubleBuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
+    DoubleBuiltinRootWidget, "reactive/reactive_double_root.html"
+)
+
+
+class PrologueRootWidget(ReactiveComponent):
+    pass
+
+
+PrologueRootWidget.__pjx_descriptor__ = _descriptor_for(
+    PrologueRootWidget, "reactive/reactive_prologue_root.html"
+)
+
+
+class InnerReactiveRoot(ReactiveComponent):
+    pass
+
+
+class OuterReactiveRoot(ReactiveComponent):
+    pass
+
+
+InnerReactiveRoot.__pjx_descriptor__ = _descriptor_for(
+    InnerReactiveRoot, "reactive/reactive_inner_root.html"
+)
+OuterReactiveRoot.__pjx_descriptor__ = _descriptor_for(
+    OuterReactiveRoot, "reactive/reactive_nested_reactive_root.html"
+)
+
+
+@pytest.fixture
+def registered_children():
+    """Publish the nested-root fixture tags, then restore the prior mapping."""
+    previous = discovery._registry.mapping
+    discovery.register_class("inner_badge", InnerBadge)
+    discovery.register_class("middle_wrap", MiddleWrap)
+    discovery.register_class("inner_reactive_root", InnerReactiveRoot)
+    yield
+    discovery._registry.mapping = previous
+
+
+@pytest.fixture
+def session() -> RenderSession:
+    """A session with only the reactive root-attr subscriber attached."""
+    session = RenderSession()
+    session.on_rendered.append(stamp_reactive_root_attrs)
+    return session
+
+
+@pytest.fixture
+def recording_session() -> RenderSession:
+    """A session with only the nested-react-keys recorder attached."""
+    session = RenderSession()
+    session.on_rendered.append(record_nested_react_keys)
+    return session
+
+
+def test_reactive_root_tag_carries_id_and_hash(session: RenderSession):
+    component = ReactiveWidget(id="w1")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="w1"' in html
+    assert f'data-pjx-hash="{component.state_hash()}"' in html
+
+
+def test_stamped_hash_is_exactly_state_hash(session: RenderSession):
+    """No recompute drift: the stamped digest is the one state_hash() returns."""
+    component = ReactiveWidget(id="w2", title="different")
+
+    html = serialize(render_level(component, session))
+
+    stamped = html.split('data-pjx-hash="')[1].split('"')[0]
+    assert stamped == component.state_hash()
+
+
+def test_plain_component_root_tag_is_untouched(session: RenderSession):
+    html = serialize(render_level(PlainWidget(id="p1"), session))
+
+    assert "data-pjx-id" not in html
+    assert "data-pjx-hash" not in html
+    assert html == "<em>plain</em>"
+
+
+def test_composes_with_a_pass_through_stamp_on_the_same_level(session: RenderSession):
+    """L0 stamping still works alongside the reactive branch: the pass-through
+    attr survives, and neither attribute is written twice."""
+    component = ReactiveWidget(id="w3")
+
+    level = render_level(component, session)
+    stamp_root_attrs(level, {"class": "card"})
+    html = serialize(level)
+
+    assert 'class="card"' in html
+    assert 'data-pjx-id="w3"' in html
+    assert html.count("data-pjx-id=") == 1
+    assert html.count("data-pjx-hash=") == 1
+
+
+def test_re_stamping_the_same_level_overrides_rather_than_duplicates(
+    session: RenderSession,
+):
+    """emit_rendered fires once per component, but the subscriber must still be
+    idempotent against the override semantics stamp_root_attrs already has."""
+    component = ReactiveWidget(id="w4")
+
+    level = render_level(component, session)
+    stamp_reactive_root_attrs(component, level, session)
+    html = serialize(level)
+
+    assert html.count("data-pjx-id=") == 1
+    assert html.count("data-pjx-hash=") == 1
+
+
+def test_self_closing_root_tag_gets_both_attrs_inserted(session: RenderSession):
+    component = VoidWidget(id="v1")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="v1"' in html
+    assert f'data-pjx-hash="{component.state_hash()}"' in html
+    assert html.endswith("/>")
+    assert " />" not in html  # no stray space introduced before the solidus
+
+
+def test_self_closing_root_keeps_its_original_attributes(session: RenderSession):
+    html = serialize(render_level(VoidWidget(id="v2"), session))
+
+    assert 'src="x.png"' in html
+    assert 'alt="a"' in html
+
+
+def test_existing_data_pjx_attrs_are_overridden_not_duplicated(
+    session: RenderSession,
+):
+    component = PreStampedWidget(id="p1")
+
+    html = serialize(render_level(component, session))
+
+    assert html.count("data-pjx-id=") == 1
+    assert html.count("data-pjx-hash=") == 1
+    assert 'data-pjx-id="p1"' in html
+    assert 'data-pjx-id="stale"' not in html
+    assert 'data-pjx-hash="deadbeef"' not in html
+    assert f'data-pjx-hash="{component.state_hash()}"' in html
+
+
+def test_override_happens_in_place_not_appended(session: RenderSession):
+    """The stale attr's slot is reused, so the id stays left of the hash."""
+    html = serialize(render_level(PreStampedWidget(id="p2"), session))
+
+    assert html.index("data-pjx-id=") < html.index("data-pjx-hash=")
+
+
+def test_fresh_insertion_when_the_root_has_no_data_pjx_attrs(session: RenderSession):
+    html = serialize(render_level(ReactiveWidget(id="f1"), session))
+
+    assert html.startswith("<span ")
+    assert html.count("data-pjx-id=") == 1
+    assert html.count("data-pjx-hash=") == 1
+
+
+def test_unrelated_existing_attributes_are_preserved(session: RenderSession):
+    html = serialize(render_level(AttrsWidget(id="a1"), session))
+
+    assert 'id="outer"' in html
+    assert 'class="a b"' in html
+    assert 'data-keep="1"' in html
+    assert "hidden" in html
+
+
+def test_boolean_attribute_is_not_rewritten_into_a_valued_one(
+    session: RenderSession,
+):
+    html = serialize(render_level(AttrsWidget(id="a2"), session))
+
+    assert 'hidden=""' not in html
+    assert 'hidden="hidden"' not in html
+
+
+def test_a_hash_value_never_needs_quote_escaping(session: RenderSession):
+    """A hex digest is quote-free by construction, so the stamp always uses '"'."""
+    html = serialize(render_level(QuotingWidget(id="q1"), session))
+
+    assert "data-pjx-hash='" not in html
+    assert 'data-pjx-hash="' in html
+
+
+def test_an_id_containing_a_double_quote_falls_back_to_single_quotes(
+    session: RenderSession,
+):
+    component = QuotingWidget(id='we"ird')
+
+    html = serialize(render_level(component, session))
+
+    assert "data-pjx-id='we\"ird'" in html
+    assert html.count("data-pjx-id=") == 1
+
+
+def test_an_attr_value_with_both_quote_kinds_is_rejected():
+    """serialize_attr has no escape hatch left, so it says so rather than
+    emitting a tag that cannot be parsed back."""
+    with pytest.raises(ValueError, match="data-pjx-id"):
+        serialize_attr("data-pjx-id", "we\"ir'd")
+
+
+def test_markup_outside_the_root_tag_is_byte_identical_after_stamping(
+    session: RenderSession,
+):
+    """Everything the splice did not touch must survive unchanged."""
+    plain = RenderSession()
+    component = AttrsWidget(id="a3")
+
+    level = render_level(component, plain)  # no subscriber attached
+    before = serialize(level)
+    before_start, before_end = level.root_span
+
+    stamp_reactive_root_attrs(component, level, plain)
+    after = serialize(level)
+    after_start, after_end = level.root_span
+
+    assert before[:before_start] == after[:after_start]
+    assert before[before_end:] == after[after_end:]
+    assert before[before_end:] == "<span>left</span>middle<b>right</b></div>"
+
+
+def test_root_span_still_bounds_exactly_the_root_tag_after_stamping(
+    session: RenderSession,
+):
+    component = AttrsWidget(id="a4")
+
+    level = render_level(component, session)
+    start, end = level.root_span
+    root_segment = level.segments[0]
+
+    assert isinstance(root_segment, str)
+    tag = root_segment[start:end]
+    assert tag.startswith("<div")
+    assert tag.endswith(">")
+    assert "data-pjx-id=" in tag
+    assert "</div>" not in tag
+
+
+def test_child_level_segments_are_untouched_by_the_parents_stamp(
+    session: RenderSession,
+):
+    """A nested RenderedLevel is a sibling segment of the parent's root tag:
+    the parent's splice edits segments[0] only and never reaches into it."""
+    child = ReactiveWidget(id="inner")
+    parent = ReactiveShell(id="outer", body=child)
+
+    html = serialize(render_level(parent, session))
+
+    assert "<p>before</p>" in html
+    assert "<p>after</p>" in html
+    assert 'data-pjx-id="outer"' in html
+    assert 'data-pjx-id="inner"' in html
+    assert html.count("data-pjx-id=") == 2
+    assert html.index('data-pjx-id="outer"') < html.index("<p>before</p>")
+
+
+def test_builtin_root_stamps_onto_the_nested_levels_root_tag(
+    session: RenderSession, registered_children: None
+):
+    """#934: when the template root IS a child tag, render_level has already
+    replaced segments[0] with that child's RenderedLevel — the stamp recurses
+    into it instead of asserting on a str."""
+    component = BuiltinRootWidget(id="b1")
+
+    html = serialize(render_level(component, session))
+
+    assert html == (
+        f'<b class="badge" data-pjx-id="b1"'
+        f' data-pjx-type="builtin_root_widget"'
+        f' data-pjx-hash="{component.state_hash()}">badge</b>'
+    )
+
+
+def test_stamp_recurses_through_two_levels_of_nested_roots(
+    session: RenderSession, registered_children: None
+):
+    """A builtin root whose own root is another child level: recursion, not a
+    single hardcoded unwrap."""
+    component = DoubleBuiltinRootWidget(id="b2")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="b2"' in html
+    assert html.startswith('<b class="badge" data-pjx-id="b2"')
+    assert html.count("data-pjx-id=") == 1
+
+
+def test_empty_attrs_is_a_noop_when_the_root_segment_is_a_nested_level(
+    registered_children: None,
+):
+    plain = RenderSession()
+    level = render_level(BuiltinRootWidget(id="b3"), plain)
+    before = serialize(level)
+
+    assert stamp_root_attrs(level, {}) is level
+    assert serialize(level) == before
+
+
+def test_non_str_non_level_root_segment_raises_a_clear_error():
+    level = RenderedLevel(
+        segments=[ChildRef(tag="Unresolved", attrs={}, inner=None)],
+        root_span=(0, 0),
+        descriptor=None,
+    )
+
+    with pytest.raises(AssertionError, match="str or RenderedLevel"):
+        stamp_root_attrs(level, {"class": "x"})
+
+
+def test_stamping_the_parent_does_not_move_the_childs_attrs(
+    session: RenderSession,
+):
+    child = ReactiveWidget(id="inner2")
+
+    html = serialize(render_level(ReactiveShell(id="outer2", body=child), session))
+
+    assert (
+        f'<span data-pjx-id="inner2" data-pjx-type="reactive_widget"'
+        f' data-pjx-hash="{child.state_hash()}">widget</span>' in html
+    )
+
+
+def test_whitespace_prologue_before_component_root(
+    session: RenderSession, registered_children
+):
+    component = PrologueRootWidget(id="pro1")
+
+    html = serialize(render_level(component, session))
+
+    assert 'data-pjx-id="pro1"' in html
+    assert html.lstrip().startswith("<b ")
+    assert 'class="badge"' in html
+    assert html.strip().endswith("</b>")
+
+
+def test_whitespace_prologue_before_plain_div_root():
+    source = '\n  <div class="card">body</div>\n'
+    parser = VerbatimParser()
+    parser.feed(source)
+    parser.close()
+    assert parser.root_span is not None
+    level = RenderedLevel(
+        segments=list(parser.segments),
+        root_span=parser.root_span,
+        descriptor=None,
+    )
+
+    html = serialize(stamp_root_attrs(level, {"data-x": "1", "class": "stamped"}))
+
+    assert html == '\n  <div class="stamped" data-x="1">body</div>\n'
+
+
+def test_multiple_whitespace_prologue_segments_before_root():
+    level = RenderedLevel(
+        segments=["\n", "   ", '<div id="d">x</div>'],
+        root_span=(4, 16),
+        descriptor=None,
+    )
+
+    html = serialize(stamp_root_attrs(level, {"data-y": "2"}))
+
+    assert html == '\n   <div id="d" data-y="2">x</div>'
+
+
+def test_reactive_in_reactive_bare_root_raises_collision(
+    session: RenderSession, registered_children: None
+):
+    """#978: a reactive component whose whole template is one reactive child
+    tag would silently clobber the child's identity — both want the same
+    element, so the stamp refuses instead."""
+    component = OuterReactiveRoot(id="outer1")
+
+    with pytest.raises(RootStampCollisionError):
+        render_level(component, session)
+
+
+def test_reactive_in_reactive_collision_message_names_both_components(
+    session: RenderSession, registered_children: None
+):
+    """The message has to name both sides: the id the outer wanted to write and
+    the type the inner already wrote are what identify the colliding pair."""
+    component = OuterReactiveRoot(id="outer1")
+
+    with pytest.raises(RootStampCollisionError) as exc_info:
+        render_level(component, session)
+
+    message = str(exc_info.value)
+    assert "outer1" in message
+    assert "inner_reactive_root" in message
+
+
+def test_fresh_session_starts_with_an_empty_nested_react_keys_map():
+    """#1012's per-request map: empty until a subscriber writes into it."""
+    assert RenderSession().nested_react_keys == {}
+
+
+def test_each_session_owns_its_own_nested_react_keys_map():
+    """Per-request by construction: no shared class-level or module-level dict."""
+    first = RenderSession()
+    second = RenderSession()
+
+    first.nested_react_keys["w"] = ("a",)
+
+    assert second.nested_react_keys == {}
+    assert first.nested_react_keys is not second.nested_react_keys
+
+
+def test_records_a_reactive_components_declared_react_keys(
+    recording_session: RenderSession,
+):
+    """Spec test 1: the value is the class's normalized _pjx_react_keys tuple."""
+    component = KeyedReactiveWidget(id="k1")
+
+    render_level(component, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "k1": KeyedReactiveWidget._pjx_react_keys
+    }
+    assert recording_session.nested_react_keys["k1"] == ("a", "b")
+
+
+def test_reactive_component_without_react_kwarg_records_an_empty_tuple(
+    recording_session: RenderSession,
+):
+    """Spec test 2: presence means 'reactive'; the value answers 'on what keys'."""
+    render_level(UnkeyedReactiveWidget(id="u1"), recording_session)
+
+    assert "u1" in recording_session.nested_react_keys
+    assert recording_session.nested_react_keys["u1"] == ()
+
+
+def test_a_tree_of_plain_components_records_nothing(
+    recording_session: RenderSession,
+):
+    """Spec test 4: non-reactive components are a bare isinstance no-op."""
+    render_level(PlainShell(id="ps1", body=PlainWidget(id="pw1")), recording_session)
+
+    assert recording_session.nested_react_keys == {}
+
+
+def test_a_mixed_tree_records_only_its_reactive_nodes(
+    recording_session: RenderSession,
+):
+    """Spec test 5: a plain child of a reactive parent never becomes a key."""
+    render_level(
+        KeyedReactiveShell(id="mix1", body=PlainWidget(id="plain1")),
+        recording_session,
+    )
+
+    assert recording_session.nested_react_keys == {"mix1": ("shell",)}
+    assert "plain1" not in recording_session.nested_react_keys
+
+
+def test_every_depth_of_a_nested_reactive_tree_gets_its_own_entry(
+    recording_session: RenderSession,
+):
+    """Spec test 3: nested entries are the point — one per component, per class."""
+    child = KeyedReactiveWidget(id="inner-k")
+    parent = KeyedReactiveShell(id="outer-k", body=child)
+
+    render_level(parent, recording_session)
+
+    assert recording_session.nested_react_keys == {
+        "outer-k": ("shell",),
+        "inner-k": ("a", "b"),
+    }
+
+
+def test_the_recorded_id_is_the_id_stamped_as_data_pjx_id():
+    """Spec test 6: the map key is the identity channel fanout's _contained reads."""
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    html = serialize(render_level(KeyedReactiveWidget(id="ident1"), both))
+
+    assert list(both.nested_react_keys) == ["ident1"]
+    assert 'data-pjx-id="ident1"' in html
+
+
+def test_recording_leaves_the_rendered_markup_byte_identical():
+    """Spec test 7: the recorder splices nothing and perturbs no other stamp."""
+    stamp_only = RenderSession()
+    stamp_only.on_rendered.append(stamp_reactive_root_attrs)
+    both = RenderSession()
+    both.on_rendered.append(stamp_reactive_root_attrs)
+    both.on_rendered.append(record_nested_react_keys)
+
+    without = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            stamp_only,
+        )
+    )
+    with_recorder = serialize(
+        render_level(
+            KeyedReactiveShell(id="bytes1", body=KeyedReactiveWidget(id="bytes2")),
+            both,
+        )
+    )
+
+    assert with_recorder == without
+    assert both.nested_react_keys == {"bytes1": ("shell",), "bytes2": ("a", "b")}
+    assert stamp_only.nested_react_keys == {}
+
+
+def test_two_sessions_never_see_each_others_entries():
+    """Spec test 8: request-scoped state, per ADR 0009/0012."""
+    first = RenderSession()
+    first.on_rendered.append(record_nested_react_keys)
+    second = RenderSession()
+    second.on_rendered.append(record_nested_react_keys)
+
+    render_level(KeyedReactiveWidget(id="s1"), first)
+    render_level(KeyedReactiveWidget(id="s2"), second)
+
+    assert first.nested_react_keys == {"s1": ("a", "b")}
+    assert second.nested_react_keys == {"s2": ("a", "b")}

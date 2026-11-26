@@ -2,7 +2,7 @@
 name: public-api-audit
 description: >-
   Audit pyjinhx public API surface—pyjinhx.__all__, top-level exports vs canonical
-  implementations, docs/reference/public-api.md alignment, tests/test_package_layout.py.
+  implementations, docs/reference/public-api.md alignment, tests/packaging/test_package_layout.py.
   Use before releases, after refactors, or when removing deprecated symbols. Read-only.
 ---
 
@@ -34,7 +34,7 @@ Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 - [ ] `import pyjinhx; set(pyjinhx.__all__) == set(dir intended)`
 - [ ] No removed symbols in docs (`mutation_scope`, `dirty_keys`, `StateKey`, `PyJinhxSettings`, `LoadContext`, `PjxLoad`, etc.)
 - [ ] New exports documented (`PjxKey`, `TriggerManifest`, `PJX_TRIGGER_HEADER`)
-- [ ] `tests/test_package_layout.py` `EXPECTED_EXPORTS` matches `pyjinhx.__all__`
+- [ ] `tests/packaging/test_package_layout.py` `EXPECTED_EXPORTS` matches `pyjinhx.__all__`
 - [ ] Examples use canonical names (`PjxContext`, not `LoadContext`; `PjxKey`, not `PjxLoad`)
 - [ ] Breaking renames noted in README if user-facing
 

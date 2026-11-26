@@ -1,0 +1,101 @@
+"""The vendored d3 subset the graph engine builds on (pjx_graph/src/d3.vendor.js).
+
+These checks read the committed bytes: the header, the bundled versions and the
+shape of the body. What the bundle defines at runtime is checked in
+tests/browser/builtins/pjx_graph/test_d3_vendor.py.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+SOURCE = (
+    Path(__file__).resolve().parents[4]
+    / "pyjinhx"
+    / "builtins"
+    / "pjx_graph"
+    / "src"
+    / "d3.vendor.js"
+)
+
+BUNDLED = {
+    "d3-selection": "3.0.1",
+    "d3-zoom": "3.0.1",
+    "d3-dispatch": "3.0.2",
+    "d3-drag": "3.0.1",
+    "d3-interpolate": "3.0.2",
+    "d3-color": "3.1.1",
+    "d3-transition": "3.0.2",
+    "d3-timer": "3.0.2",
+    "d3-ease": "3.0.2",
+}
+
+BODY_START = "var __pjxD3="
+
+
+def _header_and_body() -> tuple[str, str]:
+    text = SOURCE.read_text(encoding="utf-8")
+    start = text.index("\n" + BODY_START) + 1
+    return text[:start], text[start:]
+
+
+def test_vendored_file_exists():
+    assert SOURCE.is_file()
+
+
+def test_first_line_names_pins_and_licence():
+    first_line = SOURCE.read_text(encoding="utf-8").split("\n", 1)[0]
+    assert first_line == (
+        "/* d3-selection 3.0.1 + d3-zoom 3.0.1"
+        " — vendored by scripts/vendor_d3_zoom.py (ISC) */"
+    )
+
+
+def test_header_lists_every_bundled_package_with_version():
+    header, _ = _header_and_body()
+    for name, version in BUNDLED.items():
+        assert f"{name} {version}\n" in header
+
+
+def test_header_carries_isc_licence_text():
+    header, _ = _header_and_body()
+    assert "ISC" in header
+    assert "Copyright" in header
+    assert "Mike Bostock" in header
+    assert "Permission to use, copy, modify, and/or distribute" in header
+
+
+def test_header_is_only_comments():
+    header, _ = _header_and_body()
+    assert header.startswith("/*")
+    assert header.endswith("*/\n")
+    # Between the first line and the licence block nothing but comment text.
+    assert header.count("/*") == header.count("*/") == 2
+
+
+def test_body_is_a_single_private_iife_binding():
+    _, body = _header_and_body()
+    assert body.startswith(BODY_START + "(()=>{")
+    assert body.endswith("})();\n")
+    assert body.count("\n") == 1
+
+
+def test_body_within_size_target():
+    _, body = _header_and_body()
+    assert len(body.encode("utf-8")) <= 61_440
+
+
+def test_no_sourcemap_umd_or_global_d3():
+    text = SOURCE.read_text(encoding="utf-8")
+    for forbidden in (
+        "sourceMappingURL",
+        "define(",
+        "module.exports",
+        "window.d3",
+        "globalThis.d3",
+    ):
+        assert forbidden not in text
+
+
+def test_file_is_lf_only():
+    assert b"\r" not in SOURCE.read_bytes()

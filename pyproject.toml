@@ -33,6 +33,12 @@ Homepage = "https://github.com/paulomtts/pyjinhx"
 packages = ["pyjinhx"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+markers = [
+    "browser: needs a Playwright chromium page (tests/browser)",
+    "docs: checks documentation and its examples (tests/docs)",
+]
 
 [tool.pyright]
 typeCheckingMode = "standard"

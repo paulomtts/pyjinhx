@@ -1,0 +1,774 @@
+"""One live FastAPI request cycle: config, middleware, context and dev together.
+
+Unlike the per-module tests, nothing here enters ``request_scope()`` by hand or
+builds a fake request: every assertion is made on an HTTP response TestClient
+returned, or on state read from inside a handler the middleware called.
+"""
+
+import dataclasses
+import importlib
+import json
+import logging
+from pathlib import Path
+from typing import Annotated
+
+import pytest
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
+
+from pyjinhx.app_context import AppContext
+from pyjinhx.components import discovery
+from pyjinhx.config import PjxSettings
+from pyjinhx.context import PjxContext
+from pyjinhx.dev import warn_unconsumed_mutations
+from pyjinhx.integrations.fastapi import apply_setup
+from pyjinhx.reactive.cache import invalidate
+from pyjinhx.reactive.component import PjxKey, ReactiveComponent
+from pyjinhx.reactive.keys import MutationKey
+from pyjinhx.reactive.load_cost import note_load_cost
+from pyjinhx.reactive.mutations import dirty, mutates
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.assets import asset_token
+from pyjinhx.rendering.session import (
+    NoActiveRequestScope,
+    current_session,
+    get_dirtied,
+)
+
+STORE: dict[str, int] = {}
+"""The app-level state CycleCard.load() reads, standing in for a database."""
+
+LOAD_CALLS: list[str] = []
+"""One entry per real (uncached) load() body run, for cache-hit assertions."""
+
+
+class Keys(MutationKey):
+    """The reactive keys this module's tests dirty.
+
+    ``dirty()``/``@mutates`` reject a bare string (see
+    ``tests/unit/reactive/test_mutations.py::test_mutates_rejects_a_plain_string``
+    on origin/master) — every key has to be a ``MutationKey`` member or a
+    ``reactive_key()`` value, so a plain ``"cycle"`` literal would raise
+    ``TypeError`` at class-body/call time instead of dirtying anything.
+    """
+
+    CYCLE = "cycle"
+    ORPHAN = "nobody-reads-this"
+
+
+class CycleCard(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A reactive card keyed by ``pjx_key``, dirtied by the ``cycle`` key."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleCard":
+        LOAD_CALLS.append(pjx_key)
+        return cls(pjx_key=pjx_key)
+
+
+class CycleBadge(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A second reactive region, this one carrying CSS and JS assets."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleBadge":
+        LOAD_CALLS.append(f"badge:{pjx_key}")
+        # A key the store never heard of is how a region says it is gone: the
+        # failed load, not a registry miss, is what walk_manifest turns into a
+        # delete swap (the registry is request-scoped, ADR 0009 E6).
+        if pjx_key not in STORE:
+            raise LookupError(f"no card {pjx_key!r}")
+        return cls(pjx_key=pjx_key)
+
+
+class CycleNested(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A region CycleShell's template mounts by tag under the id ``n``."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleNested":
+        LOAD_CALLS.append(f"nested:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+class CycleShell(ReactiveComponent, react=(Keys.CYCLE,)):
+    """A region whose own render nests CycleNested — the #1022 shape."""
+
+    pjx_key: Annotated[str, PjxKey()] = ""
+
+    @classmethod
+    def load(cls, pjx_key: str) -> "CycleShell":
+        LOAD_CALLS.append(f"shell:{pjx_key}")
+        return cls(pjx_key=pjx_key)
+
+
+ASSET_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
+
+
+class Counter:
+    """An app object whose mutation method dirties the ``cycle`` key."""
+
+    @mutates(Keys.CYCLE)
+    def bump(self, card_id: str) -> None:
+        STORE[card_id] = STORE.get(card_id, 0) + 1
+
+
+@pytest.fixture(autouse=True)
+def _publish_registry():
+    """Publish the tag -> class map and reset the per-test app state."""
+    STORE.clear()
+    LOAD_CALLS.clear()
+    template_dir = Path(__file__).parents[3] / "fixtures" / "templates"
+    discovery.build_registry(
+        template_dir, [CycleCard, CycleBadge, CycleNested, CycleShell]
+    )
+    # The middleware's request session roots its loader at "/", so the
+    # descriptor must carry the real absolute path rather than a bare name.
+    CycleCard.__pjx_descriptor__ = dataclasses.replace(
+        CycleCard.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_card.pjx",
+    )
+    CycleBadge.__pjx_descriptor__ = dataclasses.replace(
+        CycleBadge.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_badge.pjx",
+        css_paths=(ASSET_DIR / "fastapi/cycle_badge.css",),
+        js_paths=(ASSET_DIR / "fastapi/cycle_badge.js",),
+    )
+    CycleNested.__pjx_descriptor__ = dataclasses.replace(
+        CycleNested.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_nested.pjx",
+    )
+    CycleShell.__pjx_descriptor__ = dataclasses.replace(
+        CycleShell.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_shell.pjx",
+    )
+    yield
+
+
+def make_app(**settings_kwargs) -> FastAPI:
+    """A FastAPI app with pyjinhx wired in through apply_setup()."""
+    app = FastAPI()
+    apply_setup(app, PjxSettings(**settings_kwargs))
+    return app
+
+
+def entry(instance_id: str, load: object, hash_: str = "stale") -> dict:
+    """One synthetic X-PJX-Mounted entry naming a mounted CycleCard region."""
+    return {"type": "cycle_card", "id": instance_id, "load": load, "hash": hash_}
+
+
+def badge_entry(instance_id: str, load: object, hash_: str = "stale") -> dict:
+    """One synthetic X-PJX-Mounted entry naming a mounted CycleBadge region."""
+    return {"type": "cycle_badge", "id": instance_id, "load": load, "hash": hash_}
+
+
+def test_apply_setup_idempotent_on_repeat_calls():
+    app = make_app()
+    apply_setup(app, PjxSettings())
+    apply_setup(app, PjxSettings())
+
+    names = [
+        middleware.cls.__name__  # pyright: ignore[reportAttributeAccessIssue]
+        for middleware in app.user_middleware
+    ]
+    assert names.count("PjxScopeMiddleware") == 1
+    assert app.state.pyjinhx_setup is True
+
+    @app.get("/ping")
+    def ping():
+        return {"scopes": current_session() is not None}
+
+    with TestClient(app) as client:
+        assert client.get("/ping").json() == {"scopes": True}
+
+
+def test_request_scope_contextvars_reset_after_response():
+    app = make_app()
+    seen: list[dict[str, object]] = []
+
+    @app.post("/dirty")
+    def dirty_endpoint(request: Request):
+        dirty(Keys.CYCLE)
+        session = current_session()
+        assert session is not None
+        seen.append(
+            {
+                "session": session,
+                "dirtied": set(get_dirtied()),
+                "mounted": session.pjx_mounted,
+            }
+        )
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        client.post("/dirty", headers={"X-PJX-Mounted": '[{"id": "a"}]'})
+        client.post("/dirty")
+
+    first, second = seen
+    assert first["dirtied"] == {"cycle"}
+    # A fresh dirtied set per request: the second request sees only its own key,
+    # never the first request's leftovers.
+    assert second["dirtied"] == {"cycle"}
+    assert first["session"] is not second["session"]
+    assert first["mounted"] == [{"id": "a"}]
+    # No X-PJX-Mounted header on the second request: MountedManifest.parse()
+    # answers "nothing is mounted" as [], never None (verified against
+    # pyjinhx/client/inject.py's parse() — a missing/unreadable header always
+    # falls through to `return []`).
+    assert second["mounted"] == []
+    assert current_session() is None
+    assert get_dirtied() == set()
+
+
+def test_cold_mount_returns_t1_response_via_testclient():
+    app = make_app()
+    STORE["card-1"] = 7
+
+    @app.get("/card")
+    def card() -> CycleCard:
+        # render() auto-mounts a root reactive component the same way
+        # _fill_children does for a ChildRef-discovered child, so the handler
+        # hands back an unloaded instance and its load() still runs once.
+        return CycleCard(id="a", pjx_key="card-1")
+
+    with TestClient(app) as client:
+        response = client.get("/card")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "cycle card-1" in response.text
+    # A cold mount is T1: the runtime is inlined because the client sent no
+    # X-PJX-Mounted header.
+    assert "<script>" in response.text
+    assert "pjx" in response.text
+    # The render mounted the component, so its load() ran exactly once.
+    assert LOAD_CALLS == ["card-1"]
+
+
+def test_mutation_round_trip_returns_gated_oob_swap():
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump")
+    def bump(request: Request):
+        # Stands in for the Load path in this request: the region the client
+        # reports as mounted has to be resolvable before fan-out can swap it.
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={"X-PJX-Mounted": json.dumps([entry("a", load="card-1")])},
+        )
+
+    assert response.status_code == 200
+    # An OOB-only body: htmx is told not to swap the trigger.
+    assert response.headers["HX-Reswap"] == "none"
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
+    assert "cycle card-1" in response.text
+    # The mutation moved the store and the swap re-ran load() against it.
+    assert STORE["card-1"] == 1
+    assert LOAD_CALLS == ["card-1"]
+
+
+def test_unchanged_region_is_gated_out_of_the_oob_swap():
+    app = make_app()
+    STORE["card-1"] = 0
+    fresh_hash = CycleCard(id="a", pjx_key="card-1").state_hash()
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
+        dirty(Keys.CYCLE)
+        invalidate(get_dirtied())
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [entry("a", load="card-1", hash_=fresh_hash)]
+                )
+            },
+        )
+
+    # Dirty says the data may have moved; the hash says this region's output
+    # did not, so the swap that would replace it with itself is dropped.
+    assert "hx-swap-oob" not in response.text
+
+
+def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets():
+    """One request through every leg: dirty -> evict -> fan-out -> gate -> assets."""
+    app = make_app()
+    STORE["card-1"] = 0
+    STORE["card-2"] = 41
+    unchanged_hash = CycleCard(id="b", pjx_key="card-2").state_hash()
+
+    @app.post("/bump")
+    def bump(request: Request):
+        for instance_id, cls, key in (
+            ("a", CycleCard, "card-1"),
+            ("b", CycleCard, "card-2"),
+            ("c", CycleBadge, "card-1"),
+        ):
+            registry.register_instance(
+                cls.__name__, instance_id, cls(id=instance_id, pjx_key=key)
+            )
+        Counter().bump("card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        entry("a", load="card-1"),
+                        entry("b", load="card-2", hash_=unchanged_hash),
+                        badge_entry("c", load="card-1"),
+                        # A region whose load() can no longer build it: gone.
+                        badge_entry("gone", load="card-9"),
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    # 1-3: the mutation moved the store, eviction let the swap re-read it.
+    assert STORE["card-1"] == 1
+    # 4a: the dirty+changed region swaps.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in body
+    # 4b: dirty but byte-identical output — gated out.
+    assert "[data-pjx-id='b']" not in body
+    # 4c: a region load() can no longer build is deleted rather than re-rendered.
+    assert "hx-swap-oob=\"delete:[data-pjx-id='gone']\"" in body
+    # 5: the asset-bearing region's CSS and JS ride along, head-targeted.
+    css_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.js")
+    assert f'<style data-pjx-asset="{css_token}" hx-swap-oob="beforeend:head">' in body
+    assert f'<script data-pjx-asset="{js_token}" hx-swap-oob="beforeend:head">' in body
+    # 6: nothing for htmx's default swap to place.
+    assert response.headers["HX-Reswap"] == "none"
+
+
+def test_round_trip_does_not_resend_assets_the_client_already_reports():
+    app = make_app()
+    STORE["card-1"] = 0
+    css_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.js")
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(
+            CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps([badge_entry("c", load="card-1")]),
+                "X-PJX-Assets": json.dumps([css_token, js_token]),
+            },
+        )
+
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='c']\"" in response.text
+    assert "data-pjx-asset" not in response.text
+
+
+def test_a_malformed_assets_header_means_the_client_has_nothing():
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump")
+    def bump(request: Request):
+        registry.register_instance(
+            CycleBadge.__name__, "c", CycleBadge(id="c", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps([badge_entry("c", load="card-1")]),
+                "X-PJX-Assets": "{not json",
+            },
+        )
+
+    # An unreadable browser-supplied header re-delivers rather than raising.
+    assert (
+        f'data-pjx-asset="{asset_token(ASSET_DIR / "fastapi/cycle_badge.css")}"'
+        in response.text
+    )
+
+
+def test_pjx_context_current_populated_inside_live_handler():
+    app = FastAPI()
+    apply_setup(
+        app,
+        PjxSettings(),
+        context_factory=lambda request: {"user": "ada"},
+    )
+    seen: dict[str, object] = {}
+
+    @app.post("/ctx")
+    def ctx():
+        dirty(Keys.CYCLE)
+        context = PjxContext.current()
+        seen["session"] = context.session
+        seen["mounted"] = context.mounted
+        seen["assets"] = context.assets
+        seen["trigger"] = context.trigger
+        seen["dirtied"] = set(context.dirtied)
+        seen["app_context"] = context.app_context
+        seen["state_has_pjx_context"] = (
+            hasattr(context.request.state, "pjx_context") if context.request else None
+        )
+        seen["request_url"] = str(context.request.url) if context.request else None
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        client.post(
+            "/ctx",
+            headers={
+                "X-PJX-Mounted": json.dumps([entry("a", load="card-1")]),
+                "X-PJX-Assets": '["tok"]',
+                "X-PJX-Trigger": '{"id": "a"}',
+            },
+        )
+
+    assert seen["session"] is not None
+    assert seen["mounted"] == [entry("a", load="card-1")]
+    assert seen["assets"] == frozenset({"tok"})
+    assert seen["trigger"] == {"id": "a"}
+    assert seen["dirtied"] == {"cycle"}
+    assert seen["app_context"] == {"user": "ada"}
+    assert seen["state_has_pjx_context"] is False
+    request_url = seen["request_url"]
+    assert isinstance(request_url, str) and request_url.endswith("/ctx")
+
+
+def test_pjx_context_current_raises_outside_request_scope():
+    app = make_app()
+
+    @app.get("/ping")
+    def ping():
+        return {"ok": True}
+
+    with TestClient(app) as client:
+        assert client.get("/ping").json() == {"ok": True}
+
+    # Setup is app-wide but the scope is per-request: outside one, no amount of
+    # prior wiring makes a context available.
+    with pytest.raises(NoActiveRequestScope):
+        PjxContext.current()
+
+
+def _unconsumed_app(**settings_kwargs) -> FastAPI:
+    """An app whose endpoint dirties a key nothing in the request loaded under."""
+    app = make_app(**settings_kwargs)
+
+    @app.post("/orphan")
+    def orphan():
+        dirty(Keys.ORPHAN)
+        warn_unconsumed_mutations()
+        return {"ok": True}
+
+    return app
+
+
+def test_reactive_dev_warns_on_unconsumed_mutation_live_request(caplog):
+    app = _unconsumed_app(reactive_dev=True)
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        assert client.post("/orphan").json() == {"ok": True}
+
+    warnings = [record.getMessage() for record in caplog.records]
+    assert any("nobody-reads-this" in message for message in warnings)
+
+
+def test_reactive_dev_silent_when_disabled_live_request(caplog):
+    app = _unconsumed_app()
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        assert client.post("/orphan").json() == {"ok": True}
+
+    warnings = [record.getMessage() for record in caplog.records]
+    assert not any("nobody-reads-this" in message for message in warnings)
+
+
+def test_lower_layers_do_not_import_the_wiring_layer():
+    """The reactive package and the session spine never reach back up."""
+    import ast
+    import pkgutil
+
+    def imported_module_names(source: str) -> set[str]:
+        """Every dotted module name a real ``import``/``from`` statement names.
+
+        AST-based rather than a substring scan: ``from pyjinhx.rendering
+        import registry`` never spells the substring "pyjinhx.rendering.registry",
+        so a text search over the source would silently miss exactly the
+        import shape this codebase's lower layers use.
+        """
+        names: set[str] = set()
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                names.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module)
+                names.update(f"{node.module}.{alias.name}" for alias in node.names)
+        return names
+
+    upper = {
+        "pyjinhx.config",
+        "pyjinhx.context",
+        "pyjinhx.dev",
+        "pyjinhx.integrations",
+    }
+    lower = ["pyjinhx.rendering.session"] + [
+        f"pyjinhx.reactive.{module.name}"
+        for module in pkgutil.iter_modules(
+            importlib.import_module("pyjinhx.reactive").__path__
+        )
+    ]
+
+    # session.request_scope() reads current_settings() through a function-local
+    # import (never at module scope) to seed a default session's Jinja
+    # globals/filters; test_import_graph.py's
+    # test_session_only_imports_config_inside_a_function_body pins that it
+    # stays function-local, so it is not a real upward edge here. The two
+    # reactive/ edges below are the same lazy pattern:
+    # reactive.component's _resolve_tier2() and reactive.cache's invalidate()
+    # each read current_settings() inside their own bodies to find the
+    # process's cache backend, never at module scope
+    # (test_component_only_imports_config_inside_a_function_body and
+    # test_cache_only_imports_config_inside_a_function_body pin those).
+    allowed_edges = {
+        ("pyjinhx.rendering.session", "pyjinhx.config"),
+        ("pyjinhx.reactive.component", "pyjinhx.config"),
+        ("pyjinhx.reactive.cache", "pyjinhx.config"),
+    }
+
+    offenders: list[tuple[str, str]] = []
+    for name in lower:
+        source = Path(importlib.import_module(name).__file__ or "").read_text()
+        imported = imported_module_names(source)
+        for upper_name in upper:
+            if (name, upper_name) in allowed_edges:
+                continue
+            if upper_name in imported or any(
+                mod.startswith(f"{upper_name}.") for mod in imported
+            ):
+                offenders.append((name, upper_name))
+
+    assert offenders == []
+
+
+class RequestAppContext(AppContext):
+    """What this module's context_factory hands each request."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+
+class ContextCard(ReactiveComponent):
+    """A card whose load() declares the app context and echoes it back."""
+
+    echoed: str = ""
+
+    @classmethod
+    def load(cls, ctx: RequestAppContext | None) -> "ContextCard":
+        return cls(echoed="no-context" if ctx is None else ctx.path)
+
+
+def test_load_receives_the_context_factory_result_over_a_real_request():
+    app = FastAPI()
+    apply_setup(
+        app,
+        PjxSettings(),
+        context_factory=lambda request: RequestAppContext(path=request.url.path),
+    )
+
+    @app.get("/ctx-echo")
+    def ctx_echo() -> dict[str, str]:
+        return {"loaded": ContextCard.load().echoed}  # type: ignore[reportCallIssue]
+
+    with TestClient(app) as client:
+        response = client.get("/ctx-echo")
+
+    assert response.status_code == 200
+    assert response.json() == {"loaded": "/ctx-echo"}
+
+
+def test_without_a_context_factory_the_injected_context_is_none():
+    app = FastAPI()
+    apply_setup(app, PjxSettings())
+
+    @app.get("/ctx-none")
+    def ctx_none() -> dict[str, str]:
+        return {"loaded": ContextCard.load().echoed}  # type: ignore[reportCallIssue]
+
+    with TestClient(app) as client:
+        response = client.get("/ctx-none")
+
+    assert response.status_code == 200
+    assert response.json() == {"loaded": "no-context"}
+
+
+def test_a_bare_component_return_still_fans_out_after_a_mutation():
+    """The #1 defect: a route returning a component with no wrapper shipped zero
+    OOB fragments, even though the mutation had already dirtied the keys."""
+    app = make_app()
+    STORE["card-1"] = 0
+
+    @app.post("/bump-bare")
+    def bump_bare():
+        # Stands in for the Load path: the region the client reports as mounted
+        # has to be resolvable before fan-out can swap it.
+        registry.register_instance(
+            CycleCard.__name__, "a", CycleCard(id="a", pjx_key="card-1")
+        )
+        Counter().bump("card-1")
+        return CycleBadge(id="primary", pjx_key="card-1")
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/bump-bare",
+            headers={"X-PJX-Mounted": json.dumps([entry("a", load="card-1")])},
+        )
+
+    assert response.status_code == 200
+    # The primary is the returned component, unwrapped and un-.render()ed.
+    assert 'id="primary"' in response.text
+    # And the mounted card fanned out alongside it, with nothing asking for it.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='a']\"" in response.text
+    # A non-empty primary means htmx keeps its normal swap.
+    assert "HX-Reswap" not in response.headers
+
+
+def test_a_nested_child_candidate_swaps_without_a_registry_collision_warning(caplog):
+    """#1022 through the real middleware: no warning, same swaps, still 200.
+
+    Both classes are pre-measured as too cheap to thread, so `_build_pass` runs
+    them inline in manifest order: the nested child's own build registers
+    `CycleNested_n` first, and the shell's build then re-renders that same region
+    as a descendant and writes the key a second time. That second write is what
+    used to log "already registered; overwriting" on every such request.
+    """
+    app = make_app()
+    STORE["card-1"] = 0
+    note_load_cost(CycleNested, 0.0)
+    note_load_cost(CycleShell, 0.0)
+
+    @app.post("/bump")
+    def bump(request: Request):
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        {
+                            "type": "cycle_nested",
+                            "id": "n",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                        {
+                            "type": "cycle_shell",
+                            "id": "s",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    assert response.status_code == 200
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='s']\"" in body
+    # The nested region ships inside the shell's swap, never as its own:
+    # _drop_nested's output filtering is untouched by this subtask.
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='n']\"" not in body
+    assert "nested card-1" in body
+    collisions = [
+        record.getMessage()
+        for record in caplog.records
+        if "already registered" in record.getMessage()
+    ]
+    assert collisions == []
+
+
+def test_a_nested_child_candidate_is_built_once_when_the_manifest_says_so(caplog):
+    """Document order with `parent`, through the real middleware.
+
+    The shell is listed first and the nested region names it as its parent, the
+    way the client reports a region inside another. The shell's swap carries
+    the nested region, the nested region's own build never runs, and so its
+    registry key is written once and nothing logs a collision. Without the
+    hint, this order writes the nested key twice and logs on every request.
+    """
+    app = make_app()
+    STORE["card-1"] = 0
+    note_load_cost(CycleNested, 0.0)
+    note_load_cost(CycleShell, 0.0)
+
+    @app.post("/bump")
+    def bump(request: Request):
+        Counter().bump("card-1")
+        invalidate(get_dirtied())
+
+    with caplog.at_level(logging.WARNING, logger="pyjinhx"), TestClient(app) as client:
+        response = client.post(
+            "/bump",
+            headers={
+                "X-PJX-Mounted": json.dumps(
+                    [
+                        {
+                            "type": "cycle_shell",
+                            "id": "s",
+                            "load": "card-1",
+                            "hash": "stale",
+                        },
+                        {
+                            "type": "cycle_nested",
+                            "id": "n",
+                            "load": "card-1",
+                            "hash": "stale",
+                            "parent": "s",
+                        },
+                    ]
+                ),
+                "X-PJX-Assets": "[]",
+            },
+        )
+
+    body = response.text
+    assert response.status_code == 200
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='s']\"" in body
+    assert "hx-swap-oob=\"outerHTML:[data-pjx-id='n']\"" not in body
+    assert "nested card-1" in body
+    assert LOAD_CALLS.count("shell:card-1") == 1
+    assert LOAD_CALLS.count("nested:card-1") == 1
+    collisions = [
+        record.getMessage()
+        for record in caplog.records
+        if "already registered" in record.getMessage()
+    ]
+    assert collisions == []

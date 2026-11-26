@@ -90,7 +90,7 @@ Compat shims: flag only when **zero callers** remain (grep the shim body, not ju
 rg -l '\bSYMBOL\b' pyjinhx tests examples docs .claude/skills
 ```
 
-4. **Export vs usage** — compare `pyjinhx.__all__` to `tests/test_package_layout.py` (`EXPECTED_EXPORTS`) and doc tables; flag exports with no docs/tests if newly added.
+4. **Export vs usage** — compare `pyjinhx.__all__` to `tests/packaging/test_package_layout.py` (`EXPECTED_EXPORTS`) and doc tables; flag exports with no docs/tests if newly added.
 5. **Branch scan** — read compat helpers (`_manifest_load_arg`, `resolve_client`, etc.): is every branch reachable?
 6. **Test scan** — tests whose names/descriptions reference removed APIs (`mutation_scope`, `data-pjx-key`, instance-tier dirty keys).
 7. **Classify** each hit: delete | migrate caller | document as intentional compat | false positive.
@@ -128,7 +128,7 @@ uv run ruff check .
 - [ ] No orphan compat branches (manifest `key` alias, stem invalidation index, etc.) without tests or callers
 - [ ] No tests asserting deleted behavior unless explicitly marked legacy
 - [ ] Audit skills grep current symbols (`warn_reactive_render_without_client`, not `..._mounted`)
-- [ ] `__all__` / `tests/test_package_layout.py` / `docs/reference/public-api.md` agree
+- [ ] `__all__` / `tests/packaging/test_package_layout.py` / `docs/reference/public-api.md` agree
 
 ## Relationship to sibling audits
 

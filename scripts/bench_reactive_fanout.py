@@ -65,7 +65,7 @@ DIRTY_RATIOS = (0.0, 0.5, 1.0)  # all-clean, half-dirty, all-dirty
 OOB_REGION_COUNTS = (10, 50, 100, 200)
 OOB_SUBTREE_SIZES = (1, 10, 50)  # child spans inside each swapped region
 
-# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# CI runs these only to prove they still execute (tests/scripts/test_bench.py);
 # timings are meaningless at one point, so the sweep collapses to its smallest.
 if os.environ.get("PJX_BENCH_SMOKE"):
     MANIFEST_SIZES = MANIFEST_SIZES[:1]
