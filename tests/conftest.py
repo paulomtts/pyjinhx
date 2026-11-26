@@ -12,6 +12,15 @@ from pyjinhx.rendering.session import RenderSession
 
 Write = Callable[[str, str], Path]
 
+TESTS = Path(__file__).parent
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        folder = item.path.relative_to(TESTS).parts[0]
+        if folder in ("browser", "docs"):
+            item.add_marker(folder)
+
 
 @pytest.fixture
 def render_session():

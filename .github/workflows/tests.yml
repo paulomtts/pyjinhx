@@ -27,11 +27,11 @@ jobs:
     - name: Install chromium for reactivity tests
       run: uv run playwright install --with-deps chromium
 
-    - name: Run pyjinhx tests
-      run: uv run pytest tests/pyjinhx/
-
     - name: Run tests
-      run: uv run pytest tests/
+      run: uv run pytest -m "not browser"
+
+    - name: Run browser tests
+      run: uv run pytest -m browser
 
     - name: Typecheck pyjinhx (basedpyright, standard mode)
       run: uvx "basedpyright==1.39.9" pyjinhx/
@@ -67,4 +67,4 @@ jobs:
         fi
 
     - name: Run the minimal-install tests
-      run: .venv-min/bin/python -m pytest tests/minimal/ -q
+      run: .venv-min/bin/python -m pytest tests/packaging/test_minimal_install.py -q
