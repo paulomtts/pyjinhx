@@ -41,7 +41,7 @@ from pyjinhx.rendering.session import (
 # stay generous on a loaded CI box.
 WORKERS = 8
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 # Barrier waits carry a timeout so a genuine deadlock fails the suite instead of
 # hanging it; the value is a liveness backstop, not a performance assertion.

@@ -16,7 +16,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:

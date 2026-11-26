@@ -9,7 +9,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_s
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:

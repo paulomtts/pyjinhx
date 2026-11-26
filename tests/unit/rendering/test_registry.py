@@ -28,7 +28,7 @@ from pyjinhx.rendering.session import (
     request_scope,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[2] / "fixtures" / "templates"
 
 
 def test_make_key_joins_type_and_id_with_underscore():

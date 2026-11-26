@@ -24,7 +24,7 @@ from pyjinhx.rendering.template_context import (
     collect_slot_tokens,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):

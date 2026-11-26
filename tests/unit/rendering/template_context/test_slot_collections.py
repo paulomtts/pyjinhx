@@ -15,7 +15,7 @@ from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 from pyjinhx.rendering.template_context import ComponentNode, build_context
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):

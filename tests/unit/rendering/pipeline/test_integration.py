@@ -23,7 +23,7 @@ from pyjinhx.rendering.root_attrs import stamp_root_attrs
 from pyjinhx.rendering.segments import serialize
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def test_childless_end_to_end_pipeline():

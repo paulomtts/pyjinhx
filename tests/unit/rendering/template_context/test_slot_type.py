@@ -18,7 +18,7 @@ from pyjinhx.components.base import (
 from pyjinhx.rendering.session import RenderSession
 from pyjinhx.rendering.template_context import build_context
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 class TestPjxSlotMarker:

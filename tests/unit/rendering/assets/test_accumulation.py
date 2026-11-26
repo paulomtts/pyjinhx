@@ -13,7 +13,7 @@ from pyjinhx.rendering.session import (
     request_scope,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 CSS = Path("/app/components/box.css")
 JS = Path("/app/components/box.js")

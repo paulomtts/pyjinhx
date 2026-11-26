@@ -13,7 +13,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession, request_scope
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def _make_component(template_path: str):
@@ -205,7 +205,7 @@ def test_component_render_uses_ambient_session(tmp_path):
 # loader is the cwd-relative "templates" dir.
 def test_component_render_without_session(monkeypatch):
     """Outside a scope, no-arg render() matches render(component, None)."""
-    monkeypatch.chdir(Path(__file__).parent.parent)  # tests/, so "templates" resolves
+    monkeypatch.chdir(Path(__file__).parents[3])  # tests/, so "templates" resolves
     DivComp = _make_component("basic/div.html")
 
     assert DivComp().render() == render(DivComp(), None)

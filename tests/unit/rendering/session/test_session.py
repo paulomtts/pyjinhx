@@ -20,7 +20,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering import session as session_module
 from pyjinhx.rendering.pipeline import render
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def test_getters_return_empty_defaults_outside_any_scope():
