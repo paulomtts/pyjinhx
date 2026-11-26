@@ -165,7 +165,7 @@ def test_on_rendered_fires_once_per_component_not_per_reactive_update():
 
 def test_accumulates_without_any_active_request_scope():
     """render(component, session) — the convention every other pyjinhx test
-    uses (see the shared render_session fixture) — must accumulate assets on
+    uses (see the shared session fixture) — must accumulate assets on
     its own, since accumulate_assets reads the session passed to render_level
     rather than the request_scope ContextVar. A session is a valid render
     target whether or not it was ever entered into request_scope()."""

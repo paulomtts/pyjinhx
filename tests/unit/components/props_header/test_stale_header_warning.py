@@ -86,7 +86,7 @@ def _wire(cls: type[BaseComponent], *, stale: bool) -> None:
     cls._pjx_stale_header_warned = False
 
 
-def test_render_warns_once_for_stale_header(render_session, caplog):
+def test_render_warns_once_for_stale_header(session, caplog):
     """First render of a flagged class emits exactly one naming WARNING."""
 
     class WarnOnce(BaseComponent):
@@ -95,7 +95,7 @@ def test_render_warns_once_for_stale_header(render_session, caplog):
     _wire(WarnOnce, stale=True)
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        render_level(WarnOnce(), render_session)
+        render_level(WarnOnce(), session)
 
     stale = [r for r in caplog.records if "{#def#}" in r.getMessage()]
     assert len(stale) == 1, [r.getMessage() for r in stale]
@@ -103,7 +103,7 @@ def test_render_warns_once_for_stale_header(render_session, caplog):
     assert "WarnOnce" in stale[0].getMessage()
 
 
-def test_second_render_does_not_warn_again(render_session, caplog):
+def test_second_render_does_not_warn_again(session, caplog):
     """The warning is once per class, not once per render."""
 
     class WarnOnlyOnce(BaseComponent):
@@ -112,14 +112,14 @@ def test_second_render_does_not_warn_again(render_session, caplog):
     _wire(WarnOnlyOnce, stale=True)
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        render_level(WarnOnlyOnce(), render_session)
-        render_level(WarnOnlyOnce(), render_session)
+        render_level(WarnOnlyOnce(), session)
+        render_level(WarnOnlyOnce(), session)
 
     stale = [r for r in caplog.records if "{#def#}" in r.getMessage()]
     assert len(stale) == 1, [r.getMessage() for r in stale]
 
 
-def test_no_header_never_warns(render_session, caplog):
+def test_no_header_never_warns(session, caplog):
     """A class whose template has no header stays silent across renders."""
 
     class NeverWarns(BaseComponent):
@@ -128,13 +128,13 @@ def test_no_header_never_warns(render_session, caplog):
     _wire(NeverWarns, stale=False)
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        render_level(NeverWarns(), render_session)
-        render_level(NeverWarns(), render_session)
+        render_level(NeverWarns(), session)
+        render_level(NeverWarns(), session)
 
     assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
 
 
-def test_classless_component_never_warns(render_session, caplog):
+def test_classless_component_never_warns(session, caplog):
     """A class built *from* a header is not carrying a stale one."""
     fields = parse_props_header('{#def title: str = "x" #}\n<div>{{ title }}</div>')
     assert fields is not None
@@ -154,13 +154,13 @@ def test_classless_component_never_warns(render_session, caplog):
     )
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
-        render_level(cls(), render_session)
-        render_level(cls(), render_session)
+        render_level(cls(), session)
+        render_level(cls(), session)
 
     assert [r for r in caplog.records if "{#def#}" in r.getMessage()] == []
 
 
-def test_header_is_parsed_once_per_class_not_per_render(render_session, monkeypatch):
+def test_header_is_parsed_once_per_class_not_per_render(session, monkeypatch):
     """N renders of a class cost zero header parses: the probe ran at build."""
 
     class ProbeOnce(BaseComponent):
@@ -177,7 +177,7 @@ def test_header_is_parsed_once_per_class_not_per_render(render_session, monkeypa
     monkeypatch.setattr(props_header, "parse_props_header", _spy)
 
     for _ in range(5):
-        render_level(ProbeOnce(), render_session)
+        render_level(ProbeOnce(), session)
 
     assert calls == []
 
