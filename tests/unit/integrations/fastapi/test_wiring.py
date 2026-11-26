@@ -27,7 +27,7 @@ class Greeting(BaseComponent):
 
 
 Greeting.__pjx_descriptor__ = ClassDescriptor(
-    template_path=Path(__file__).parent.parent.parent
+    template_path=Path(__file__).parents[3]
     / "fixtures"
     / "templates"
     / "fastapi/pjx_integrations_greeting.html",

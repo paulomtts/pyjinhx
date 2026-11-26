@@ -32,7 +32,7 @@ from pyjinhx.rendering.segments import (
 )
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[2] / "fixtures" / "templates"
 
 
 class ReactiveWidget(ReactiveComponent):

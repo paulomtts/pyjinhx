@@ -105,7 +105,7 @@ class CycleShell(ReactiveComponent, react=(Keys.CYCLE,)):
         return cls(pjx_key=pjx_key)
 
 
-ASSET_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
+ASSET_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 class Counter:
@@ -121,7 +121,7 @@ def _publish_registry():
     """Publish the tag -> class map and reset the per-test app state."""
     STORE.clear()
     LOAD_CALLS.clear()
-    template_dir = Path(__file__).parent.parent.parent / "fixtures" / "templates"
+    template_dir = Path(__file__).parents[3] / "fixtures" / "templates"
     discovery.build_registry(
         template_dir, [CycleCard, CycleBadge, CycleNested, CycleShell]
     )

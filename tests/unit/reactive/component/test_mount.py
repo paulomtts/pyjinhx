@@ -25,7 +25,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import serialize
 from pyjinhx.rendering.session import RenderSession, request_scope
 
-_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 _load_calls: list[int] = []
 
