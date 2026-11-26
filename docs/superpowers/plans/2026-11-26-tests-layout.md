@@ -1,33 +1,46 @@
 # Tests layout reorganisation: implementation plan
 
 Planning only. Nothing under `tests/` has been moved yet. Every number below was
-measured on `refactor/tests-layout` at `ed7e97b5` (master, 1.17.0).
+measured on `refactor/tests-layout` rebased onto master `3c8b973c` (after #1077 flat
+builtins, #1078 single-file todo example, #1079).
 
 Baseline to preserve:
 
-- `uv run pytest --co -q | tail -1` -> `6296 tests collected`
-- `uv run pytest -q | tail -1` -> `6291 passed, 1 skipped, 3 xfailed, 1 xpassed` (about 5m20s, of which 4m30s is browser tests)
+- `uv run pytest --co -q | tail -1` -> `6295 tests collected`
+- `uv run pytest -q | tail -1` -> `6290 passed, 1 skipped, 3 xfailed, 1 xpassed` (about 5m20s, of which 4m30s is browser tests)
+
+The last two numbers move between runs. `test_reactive_fanout.py::test_walk_manifest_stats_shared_template_only_once`
+is a non-strict xfail marked "~12% flaky", so a run reports either `3 xfailed, 1 xpassed`
+or `4 xfailed`. Both are the baseline; `6290 passed, 1 skipped` is the part that must hold.
 
 ## 0. Before starting
 
-Two other branches merge first, and both touch files this plan moves:
+**The package reorganisation lands first.** Its plan is
+`docs/superpowers/plans/2026-11-26-package-layout.md` on `refactor/package-layout`. It
+moves the flat modules of `pyjinhx/` into `document/`, `components/` and `rendering/`,
+moves `responses.py` into `integrations/`, and leaves `config`, `context`,
+`app_context`, `dev`, `manifest` and `stubgen` at the top level. `tests/unit/` below
+mirrors that layout, not today's flat one.
 
-- `refactor/flatten-builtins` turns `pyjinhx/builtins/ui/<name>/` into `pyjinhx/builtins/<name>/`.
-  `tests/unit/builtins/` below is already flat, so it mirrors that layout. Wherever a table
-  here shows `/ "builtins" / "ui"` or `pyjinhx.builtins.ui.`, read it as already rewritten
-  by that branch; this plan changes only the `parents[N]` index in front of it.
-- `refactor/examples-sfc` rewrites `examples/todo` and may edit the tests under
-  `tests/examples/` and `tests/minimal/`. Those two folders are moved here as whole
-  folders with globs (steps 4.1 and 4.2), never file by file from a list, so whatever
-  that branch leaves in them moves intact.
+What that means here:
 
-So: rebase onto master once both are in, then re-record the two baseline lines above.
-If the collected count is no longer 6296, use the new number everywhere this plan says
-6296. Line numbers in sections 3 and 4.3 are a snapshot of `ed7e97b5` and may be off by
-a few lines after the rebase; every step is checked by a grep or a test run, not by a
-line number.
+- This plan is implemented on master *after* that branch has merged. Rebase first, then
+  re-record the two baseline lines above. If the collected count is no longer 6295, use
+  the new number wherever this plan says 6295.
+- The package branch edits the tests in place (still under `tests/pyjinhx/`): import
+  lines, strings that name modules, and a few paths such as
+  `/ "pyjinhx" / "props_header.py"`. Read the right-hand side of those in the tables
+  here as already rewritten. This plan changes where a test file lives and the
+  `parents[N]` index in front of such a path, nothing else.
+- Section 9 of the package plan sketches a `tests/unit` mapping on the assumption that
+  the tests would already have moved. They will not have; this document is the mapping.
+  Section 2.6 lists where the two differ.
+- Line numbers in sections 3 and 4.3 are a snapshot of `3c8b973c` and will shift by a
+  few lines. Every step is checked by a grep or a test run, not by a line number.
+- Comments inside `pyjinhx/` that name a test file (3.4) will be in renamed source
+  files by then (`pyjinhx/_component.py` is `pyjinhx/components/base.py`, and so on).
 
-Also record the test names, to compare at the end without depending on paths:
+Record the test names before starting, to compare at the end without depending on paths:
 
 ```
 uv run pytest --co -q | grep :: | sed 's/^[^:]*:://' | sort > /tmp/names.before
@@ -35,37 +48,37 @@ uv run pytest --co -q | grep :: | sed 's/^[^:]*:://' | sort > /tmp/names.before
 
 Hard rules for the implementer: never `git stash`, never `git reset --hard`, do not
 push. One commit per numbered step. Run `ruff format .` and `ruff check .` before each
-commit (`ruff check` reports a merged file's duplicate definitions as F811 and stray
-mid-file imports as E402, which is exactly what a bad merge looks like).
+commit (`ruff check` reports a merged file's duplicate imports as F811 and stray
+mid-file imports as E402, which is what an unfinished merge looks like).
 
 ## 1. Final tree
 
 ```
 tests/
   conftest.py              autouse state resets, write, render_session, session, folder markers
-  unit/                    one file per source module, mirroring pyjinhx/      4734 tests
-    test_<module>.py         app_context config context descriptor dev importer manifest markers
-                             props_header registry render_context responses root_attrs stubgen
-                             template_blocks
-    assets/ classless/ component/ discovery/ render_cache/ rendering/ segments/ session/ sfc/
-                             modules whose tests exceed ~800 lines: one folder, existing files
-    slots/                   the one feature folder (slots span markers, render_context, rendering)
-    reactive/                test_<module>.py, plus cache/ and component/ folders
-    integrations/            test_base.py test_diskcache.py test_setup_dispatch.py fastapi/
+  unit/                    mirrors pyjinhx/ after the package reorganisation        4734 tests
+    test_<module>.py         app_context config context dev manifest stubgen
+    document/                test_scanner.py test_template_blocks.py
+    components/              base/ classless/ discovery/ importer/ props_header/
+    rendering/               pipeline/ session/ template_context/ segments/ assets/ render_cache/
+                             test_root_attrs.py test_registry.py
+    integrations/            test_base.py test_diskcache.py test_responses.py
+                             test_setup_dispatch.py fastapi/
+    reactive/                test_<module>.py, plus cache/ and component/
     client/                  test_client.py test_inject.py (the Python side of pyjinhx/client)
     builtins/                test_pjx_<name>.py per builtin, test_builtins.py,
                              families/ theme_tokens/ pjx_graph/ pjx_roster_picker/ pjx_select/
-  browser/                 everything that needs a Playwright page               971 tests
+  browser/                 everything that needs a Playwright page                  971 tests
     conftest.py              chromium guard, page_errors, console_errors
     client/                  pjx.js in chromium (conftest.py: pjx_page, pjx_full_page)
     builtins/                test_pjx_<name>.py, plus pjx_graph/ pjx_roster_picker/ pjx_select/
                              pjx_popover/ pjx_tooltip/
     test_gallery_theme_toggle.py
-  docs/                    doc-lint and the docs demo registry                   103 tests
-  scripts/                 test_bench.py test_fold_components.py                 109 tests
+  docs/                    doc-lint and the docs demo registry                      103 tests
+  scripts/                 test_bench.py test_fold_components.py                    109 tests
   packaging/               test_package_layout.py test_minimal_install.py
-                           test_import_graph.py                                  250 tests
-  apps/                    todo/ (examples/todo) and fewer_files/ (the parity app) 129 tests
+                           test_import_graph.py                                     249 tests
+  apps/                    todo/ (examples/todo) and fewer_files/ (the parity app)  129 tests
   fixtures/
     __init__.py
     templates/<topic>/       basic cycle fastapi integration nesting reactive slots splice discovery
@@ -77,13 +90,17 @@ tests/
 
 | Folder | Test files | Tests collected | Marker |
 |---|---|---|---|
-| `tests/unit/` | 176 | 4734 | none |
+| `tests/unit/` | 175 | 4734 | none |
 | `tests/browser/` | 77 | 971 | `browser` |
 | `tests/docs/` | 9 | 103 | `docs` |
-| `tests/scripts/` | 2 | 109 | `slow` |
-| `tests/packaging/` | 3 | 250 | `slow` |
-| `tests/apps/` | 8 | 129 | `slow` |
-| total | 275 | 6296 | |
+| `tests/scripts/` | 2 | 109 | none |
+| `tests/packaging/` | 3 | 249 | none |
+| `tests/apps/` | 8 | 129 | none |
+| total | 274 | 6295 | |
+
+A module's tests sit at the same relative path as the module: `pyjinhx/rendering/session.py`
+is tested by `tests/unit/rendering/session/` (a folder, because its tests exceed 800
+lines), `pyjinhx/rendering/root_attrs.py` by `tests/unit/rendering/test_root_attrs.py`.
 
 There is no `fixtures/ui/`. The approved tree lists one, but nothing tracked would go in
 it: `tests/ui/` in the main checkout holds only stale `__pycache__` folders left behind
@@ -91,9 +108,9 @@ when the old engine was removed (#660), and git ignores them. Delete that folder
 
 ### How the rules were applied
 
-- A source module whose tests total 800 lines or fewer gets one file, `unit/test_<module>.py`,
-  built by merging (section 2.2).
-- A source module whose tests total more gets `unit/<module>/` holding the files that
+- A source module whose tests total 800 lines or fewer gets one file,
+  `unit/<package>/test_<module>.py`, built by merging where there are several (section 2.2).
+- A source module whose tests total more gets `unit/<package>/<module>/` holding the files that
   exist today, renamed to drop the repeated prefix and any `_v2`, `_matrix` or `_sweep`
   suffix. Files inside such a folder are not merged with each other: no rule asks for
   it, and every merge risks the isolation problems in section 7.
@@ -107,27 +124,31 @@ when the old engine was removed (#660), and git ignores them. Delete that folder
   they get folders even though popover totals only 643 lines.
 - The graph and roster picker families keep a folder in `unit/builtins/` although each
   member is its own source module, because each family shares a `parse_html` fixture
-  and the two families' versions behave differently (section 4.2).
+  and the two families' versions behave differently (section 4.2). Decided: keep.
+- The slot tests are not a folder of their own. They exercise `ComponentNode`,
+  `SlotProps` and `build_context`, which the package plan joins into
+  `rendering/template_context.py`, so they live in `unit/rendering/template_context/`
+  as `test_slot_*.py` beside `test_markers.py` and `test_build_context.py`.
 
 ### Files already over 800 lines
 
-These twelve are single files today and move as they are. Splitting them means
-deciding where shared helpers and autouse fixtures go, which is not mechanical, so it
-is left out of this refactor (question 1 in section 8).
+These twelve are single files today and move as they are. Decided: they are split in
+a follow-up PR, not here, because a split has to decide where shared helpers and
+autouse fixtures go and that is not mechanical.
 
 | File after the move | Lines |
 |---|---|
 | `browser/builtins/pjx_graph/test_reconcile.py` | 1599 |
-| `browser/builtins/pjx_roster_picker/test_pick_remove.py` | 1131 |
-| `browser/builtins/pjx_roster_picker/test_swaps.py` | 831 |
-| `packaging/test_import_graph.py` | 1114 |
+| `browser/builtins/pjx_roster_picker/test_pick_remove.py` | 1127 |
+| `browser/builtins/pjx_roster_picker/test_swaps.py` | 827 |
+| `packaging/test_import_graph.py` | 1081 |
 | `scripts/test_fold_components.py` | 1234 |
-| `unit/component/test_class_descriptor.py` | 2020 |
+| `unit/components/base/test_class_descriptor.py` | 2020 |
 | `unit/integrations/fastapi/test_wiring.py` | 954 |
 | `unit/reactive/component/test_load_wrap.py` | 808 |
 | `unit/reactive/test_fanout.py` | 2659 |
-| `unit/segments/test_segments.py` | 1279 |
-| `unit/session/test_session.py` | 957 |
+| `unit/rendering/segments/test_segments.py` | 1279 |
+| `unit/rendering/session/test_session.py` | 957 |
 | `unit/test_manifest.py` | 1119 |
 
 ## 2. Mapping
@@ -347,28 +368,28 @@ appended, in that order, into the new file.
 | `pyjinhx/reactive/test_reactive_state_hash.py` | `unit/reactive/component/test_state_hash.py` |  |
 | `pyjinhx/reactive/test_tier2_nested_ownership.py` | `unit/reactive/cache/test_tier2_nested_ownership.py` |  |
 | `pyjinhx/test_app_context.py` | `unit/test_app_context.py` |  |
-| `pyjinhx/test_asset_emission.py` | `unit/assets/test_emission.py` |  |
-| `pyjinhx/test_asset_hashing.py` | `unit/assets/test_hashing.py` |  |
-| `pyjinhx/test_asset_manifest.py` | `unit/assets/test_manifest.py` |  |
-| `pyjinhx/test_assets.py` | `unit/assets/test_accumulation.py` |  |
+| `pyjinhx/test_asset_emission.py` | `unit/rendering/assets/test_emission.py` |  |
+| `pyjinhx/test_asset_hashing.py` | `unit/rendering/assets/test_hashing.py` |  |
+| `pyjinhx/test_asset_manifest.py` | `unit/rendering/assets/test_manifest.py` |  |
+| `pyjinhx/test_assets.py` | `unit/rendering/assets/test_accumulation.py` |  |
 | `pyjinhx/test_bench_script_v2.py` | `scripts/test_bench.py` | merge 2/3 |
-| `pyjinhx/test_block_discovery.py` | `unit/discovery/test_python_documents.py` |  |
-| `pyjinhx/test_block_grammar_corpus.py` | `unit/test_template_blocks.py` | merge 2/2 |
-| `pyjinhx/test_children_field_resolution.py` | `unit/component/test_children_field.py` |  |
-| `pyjinhx/test_classless_factory.py` | `unit/classless/test_factory.py` |  |
-| `pyjinhx/test_classless_matrix.py` | `unit/classless/test_surface.py` |  |
-| `pyjinhx/test_component.py` | `unit/component/test_base_component.py` |  |
-| `pyjinhx/test_component_descriptor.py` | `unit/component/test_class_descriptor.py` |  |
+| `pyjinhx/test_block_discovery.py` | `unit/components/discovery/test_python_documents.py` |  |
+| `pyjinhx/test_block_grammar_corpus.py` | `unit/document/test_template_blocks.py` | merge 2/2 |
+| `pyjinhx/test_children_field_resolution.py` | `unit/components/base/test_children_field.py` |  |
+| `pyjinhx/test_classless_factory.py` | `unit/components/classless/test_factory.py` |  |
+| `pyjinhx/test_classless_matrix.py` | `unit/components/classless/test_surface.py` |  |
+| `pyjinhx/test_component.py` | `unit/components/base/test_base_component.py` |  |
+| `pyjinhx/test_component_descriptor.py` | `unit/components/base/test_class_descriptor.py` |  |
 | `pyjinhx/test_component_export_not_shadowed.py` | `packaging/test_package_layout.py` | merge 2/2 |
-| `pyjinhx/test_compose_fanout.py` | `unit/test_responses.py` | merge 2/2 |
-| `pyjinhx/test_concurrency.py` | `unit/session/test_concurrency.py` |  |
+| `pyjinhx/test_compose_fanout.py` | `unit/integrations/test_responses.py` | merge 2/2 |
+| `pyjinhx/test_concurrency.py` | `unit/rendering/session/test_concurrency.py` |  |
 | `pyjinhx/test_config_v2.py` | `unit/test_config.py` |  |
 | `pyjinhx/test_context.py` | `unit/test_context.py` |  |
-| `pyjinhx/test_descriptor.py` | `unit/test_descriptor.py` |  |
+| `pyjinhx/test_descriptor.py` | `unit/components/base/test_descriptor.py` |  |
 | `pyjinhx/test_dev.py` | `unit/test_dev.py` |  |
-| `pyjinhx/test_direct_nesting.py` | `unit/slots/test_direct_nesting.py` |  |
-| `pyjinhx/test_discovery.py` | `unit/discovery/test_walk.py` |  |
-| `pyjinhx/test_discovery_matrix.py` | `unit/discovery/test_combined.py` |  |
+| `pyjinhx/test_direct_nesting.py` | `unit/rendering/template_context/test_direct_nesting.py` |  |
+| `pyjinhx/test_discovery.py` | `unit/components/discovery/test_walk.py` |  |
+| `pyjinhx/test_discovery_matrix.py` | `unit/components/discovery/test_combined.py` |  |
 | `pyjinhx/test_docs_api_boundary.py` | `docs/test_api_boundary.py` |  |
 | `pyjinhx/test_docs_cache_backends.py` | `docs/test_cache_backends.py` |  |
 | `pyjinhx/test_docs_chart.py` | `docs/test_chart.py` |  |
@@ -380,49 +401,49 @@ appended, in that order, into the new file.
 | `pyjinhx/test_gallery_demos.py` | `docs/test_gallery_demos.py` |  |
 | `pyjinhx/test_gallery_theme_toggle_browser.py` | `browser/test_gallery_theme_toggle.py` |  |
 | `pyjinhx/test_import_graph.py` | `packaging/test_import_graph.py` |  |
-| `pyjinhx/test_importer.py` | `unit/test_importer.py` |  |
-| `pyjinhx/test_instance_registry.py` | `unit/test_registry.py` |  |
-| `pyjinhx/test_loader.py` | `unit/session/test_loader.py` |  |
+| `pyjinhx/test_importer.py` | `unit/components/importer/test_import_hook.py` |  |
+| `pyjinhx/test_instance_registry.py` | `unit/rendering/test_registry.py` |  |
+| `pyjinhx/test_loader.py` | `unit/rendering/session/test_loader.py` |  |
 | `pyjinhx/test_manifest.py` | `unit/test_manifest.py` |  |
-| `pyjinhx/test_markers.py` | `unit/test_markers.py` |  |
-| `pyjinhx/test_orphan_tags.py` | `unit/classless/test_orphan_tags.py` |  |
-| `pyjinhx/test_pjx_python_component.py` | `unit/sfc/test_pjx_document.py` |  |
-| `pyjinhx/test_props_header_build.py` | `unit/test_props_header.py` | merge 2/2 |
-| `pyjinhx/test_props_header_parse.py` | `unit/test_props_header.py` | merge 1/2 |
-| `pyjinhx/test_registry.py` | `unit/discovery/test_registry.py` |  |
-| `pyjinhx/test_render_cache_behavior.py` | `unit/render_cache/test_behavior.py` |  |
-| `pyjinhx/test_render_cache_key.py` | `unit/render_cache/test_key.py` |  |
-| `pyjinhx/test_render_cache_store.py` | `unit/render_cache/test_store.py` |  |
-| `pyjinhx/test_render_cache_wiring.py` | `unit/render_cache/test_wiring.py` |  |
-| `pyjinhx/test_render_children.py` | `unit/rendering/test_children.py` |  |
-| `pyjinhx/test_render_context.py` | `unit/test_render_context.py` |  |
-| `pyjinhx/test_render_cost_threshold.py` | `unit/render_cache/test_cost_threshold.py` |  |
-| `pyjinhx/test_render_cycle_guard.py` | `unit/rendering/test_cycle_guard.py` |  |
-| `pyjinhx/test_render_hook.py` | `unit/rendering/test_hook.py` |  |
-| `pyjinhx/test_render_instantiate.py` | `unit/rendering/test_instantiate.py` |  |
-| `pyjinhx/test_render_integration.py` | `unit/rendering/test_integration.py` |  |
-| `pyjinhx/test_render_level.py` | `unit/rendering/test_level.py` |  |
-| `pyjinhx/test_render_nested_integration.py` | `unit/rendering/test_nested_integration.py` |  |
-| `pyjinhx/test_render_public.py` | `unit/rendering/test_public.py` |  |
-| `pyjinhx/test_render_splice.py` | `unit/rendering/test_splice.py` |  |
-| `pyjinhx/test_replace.py` | `unit/discovery/test_replace.py` |  |
-| `pyjinhx/test_responses.py` | `unit/test_responses.py` | merge 1/2 |
-| `pyjinhx/test_root_attrs.py` | `unit/test_root_attrs.py` |  |
-| `pyjinhx/test_segments.py` | `unit/segments/test_segments.py` |  |
-| `pyjinhx/test_segments_fastpath.py` | `unit/segments/test_fastpath.py` |  |
-| `pyjinhx/test_session.py` | `unit/session/test_session.py` |  |
+| `pyjinhx/test_markers.py` | `unit/rendering/template_context/test_markers.py` |  |
+| `pyjinhx/test_orphan_tags.py` | `unit/components/classless/test_orphan_tags.py` |  |
+| `pyjinhx/test_pjx_python_component.py` | `unit/components/importer/test_document_class.py` |  |
+| `pyjinhx/test_props_header_build.py` | `unit/components/props_header/test_build.py` |  |
+| `pyjinhx/test_props_header_parse.py` | `unit/components/props_header/test_parse.py` |  |
+| `pyjinhx/test_registry.py` | `unit/components/discovery/test_registry.py` |  |
+| `pyjinhx/test_render_cache_behavior.py` | `unit/rendering/render_cache/test_behavior.py` |  |
+| `pyjinhx/test_render_cache_key.py` | `unit/rendering/render_cache/test_key.py` |  |
+| `pyjinhx/test_render_cache_store.py` | `unit/rendering/render_cache/test_store.py` |  |
+| `pyjinhx/test_render_cache_wiring.py` | `unit/rendering/render_cache/test_wiring.py` |  |
+| `pyjinhx/test_render_children.py` | `unit/rendering/pipeline/test_children.py` |  |
+| `pyjinhx/test_render_context.py` | `unit/rendering/template_context/test_build_context.py` |  |
+| `pyjinhx/test_render_cost_threshold.py` | `unit/rendering/render_cache/test_cost_threshold.py` |  |
+| `pyjinhx/test_render_cycle_guard.py` | `unit/rendering/pipeline/test_cycle_guard.py` |  |
+| `pyjinhx/test_render_hook.py` | `unit/rendering/pipeline/test_hook.py` |  |
+| `pyjinhx/test_render_instantiate.py` | `unit/rendering/pipeline/test_instantiate.py` |  |
+| `pyjinhx/test_render_integration.py` | `unit/rendering/pipeline/test_integration.py` |  |
+| `pyjinhx/test_render_level.py` | `unit/rendering/pipeline/test_level.py` |  |
+| `pyjinhx/test_render_nested_integration.py` | `unit/rendering/pipeline/test_nested_integration.py` |  |
+| `pyjinhx/test_render_public.py` | `unit/rendering/pipeline/test_public.py` |  |
+| `pyjinhx/test_render_splice.py` | `unit/rendering/pipeline/test_splice.py` |  |
+| `pyjinhx/test_replace.py` | `unit/components/discovery/test_replace.py` |  |
+| `pyjinhx/test_responses.py` | `unit/integrations/test_responses.py` | merge 1/2 |
+| `pyjinhx/test_root_attrs.py` | `unit/rendering/test_root_attrs.py` |  |
+| `pyjinhx/test_segments.py` | `unit/rendering/segments/test_segments.py` |  |
+| `pyjinhx/test_segments_fastpath.py` | `unit/rendering/segments/test_fastpath.py` |  |
+| `pyjinhx/test_session.py` | `unit/rendering/session/test_session.py` |  |
 | `pyjinhx/test_setup_backend_dispatch.py` | `unit/integrations/test_setup_dispatch.py` |  |
-| `pyjinhx/test_sfc_component.py` | `unit/sfc/test_inline_component.py` |  |
-| `pyjinhx/test_sfc_extract.py` | `unit/sfc/test_extract.py` |  |
-| `pyjinhx/test_sfc_header.py` | `unit/sfc/test_header.py` |  |
-| `pyjinhx/test_sfc_python_block.py` | `unit/sfc/test_python_block.py` |  |
-| `pyjinhx/test_slot_collections.py` | `unit/slots/test_collections.py` |  |
-| `pyjinhx/test_slot_props_view.py` | `unit/slots/test_props_view.py` |  |
-| `pyjinhx/test_slot_semantics_matrix.py` | `unit/slots/test_semantics.py` |  |
-| `pyjinhx/test_slot_type_v2.py` | `unit/slots/test_slot_type.py` |  |
-| `pyjinhx/test_stale_header_warning.py` | `unit/rendering/test_stale_header_warning.py` |  |
+| `pyjinhx/test_sfc_component.py` | `unit/components/base/test_inline_template.py` |  |
+| `pyjinhx/test_sfc_extract.py` | `unit/document/test_scanner.py` | merge 1/3 |
+| `pyjinhx/test_sfc_header.py` | `unit/document/test_scanner.py` | merge 2/3 |
+| `pyjinhx/test_sfc_python_block.py` | `unit/document/test_scanner.py` | merge 3/3 |
+| `pyjinhx/test_slot_collections.py` | `unit/rendering/template_context/test_slot_collections.py` |  |
+| `pyjinhx/test_slot_props_view.py` | `unit/rendering/template_context/test_slot_props_view.py` |  |
+| `pyjinhx/test_slot_semantics_matrix.py` | `unit/rendering/template_context/test_slot_semantics.py` |  |
+| `pyjinhx/test_slot_type_v2.py` | `unit/rendering/template_context/test_slot_type.py` |  |
+| `pyjinhx/test_stale_header_warning.py` | `unit/components/props_header/test_stale_header_warning.py` |  |
 | `pyjinhx/test_stubgen.py` | `unit/test_stubgen.py` |  |
-| `pyjinhx/test_template_blocks.py` | `unit/test_template_blocks.py` | merge 1/2 |
+| `pyjinhx/test_template_blocks.py` | `unit/document/test_template_blocks.py` | merge 1/2 |
 | `pyjinhx/test_theme_tokens.py` | `unit/builtins/theme_tokens/test_stylesheets.py` |  |
 | `test_bench_fixture_parity.py` | `scripts/test_bench.py` | merge 3/3 |
 | `test_bench_scripts_smoke.py` | `scripts/test_bench.py` | merge 1/3 |
@@ -436,24 +457,25 @@ appended, in that order, into the new file.
 
 | Merged file | Sources, in order | Lines | Tests |
 |---|---|---|---|
-| `browser/builtins/test_pjx_chip_input.py` | `test_pjx_chip_input.py#B` + `test_pjx_chip_input_build_chip.py` | 149 | 5 |
+| `browser/builtins/test_pjx_chip_input.py` | `test_pjx_chip_input.py#B` + `test_pjx_chip_input_build_chip.py` | 148 | 5 |
 | `packaging/test_package_layout.py` | `test_package_layout.py` + `test_component_export_not_shadowed.py` | 351 | 25 |
 | `scripts/test_bench.py` | `test_bench_scripts_smoke.py` + `test_bench_script_v2.py` + `test_bench_fixture_parity.py` | 201 | 32 |
 | `unit/builtins/test_builtins.py` | `test_builtin_extra_attrs.py` + `test_builtin_autoregistration.py` | 134 | 5 |
 | `unit/builtins/test_pjx_chart.py` | `test_pjx_chart.py` + `test_pjx_chart_scale.py` | 393 | 61 |
 | `unit/builtins/test_pjx_icon.py` | `test_pjx_icon.py` + `test_pjx_icon_data.py` | 150 | 15 |
-| `unit/builtins/test_pjx_popover.py` | `test_pjx_popover.py` + `test_pjx_popover_assets.py` | 136 | 16 |
+| `unit/builtins/test_pjx_popover.py` | `test_pjx_popover.py` + `test_pjx_popover_assets.py` | 134 | 16 |
 | `unit/builtins/test_pjx_tab_group.py` | `test_pjx_tab_group.py` + `test_pjx_tab_group_composition.py` | 125 | 11 |
 | `unit/client/test_client.py` | `test_client_package.py` + `test_pjx_theme.py` + `test_vendored_htmx.py` | 275 | 25 |
 | `unit/client/test_inject.py` | `test_inject.py` + `test_pjx_style.py` + `test_pjx_theme_inject.py#U` | 520 | 62 |
+| `unit/document/test_scanner.py` | `test_sfc_extract.py` + `test_sfc_header.py` + `test_sfc_python_block.py` | 530 | 88 |
+| `unit/document/test_template_blocks.py` | `test_template_blocks.py` + `test_block_grammar_corpus.py` | 651 | 138 |
 | `unit/integrations/test_base.py` | `test_base.py` + `test_registry.py` | 253 | 15 |
-| `unit/test_props_header.py` | `test_props_header_parse.py` + `test_props_header_build.py` | 734 | 118 |
-| `unit/test_responses.py` | `test_responses.py` + `test_compose_fanout.py` | 539 | 40 |
-| `unit/test_template_blocks.py` | `test_template_blocks.py` + `test_block_grammar_corpus.py` | 651 | 138 |
+| `unit/integrations/test_responses.py` | `test_responses.py` + `test_compose_fanout.py` | 539 | 40 |
 
-`#B` marks the browser tests split out of a mixed file. All fourteen merges were
-trial-built in a scratch directory (sources concatenated in the order shown) and run:
-each collects exactly the sum of its sources and passes. One planned merge failed that
+`#B` marks the browser tests split out of a mixed file. The thirteen non-browser merges
+were trial-built in a scratch directory (sources concatenated in the order shown) and
+run: each collects exactly the sum of its sources and passes. The chip input browser
+merge was not trialled. One planned merge failed that
 trial and was dropped: `test_setup_backend_dispatch.py` into `unit/test_config.py`. Its
 autouse `_empty_backend_registry` empties the integrations backend slot for every test
 in the file, which breaks `test_setup_delegates_an_asgi_app_to_the_fastapi_integration`
@@ -463,7 +485,7 @@ Renames needed inside merged files:
 
 | Merged file | Name | What to do |
 |---|---|---|
-| `unit/test_responses.py` | `_compose` | Defined in both sources with the same body and a different docstring. Keep the first, delete the second. |
+| `unit/integrations/test_responses.py` | `_compose` | Defined in both sources with the same body and a different docstring. Keep the first, delete the second. |
 | `unit/client/test_inject.py` | `FakeRequest` | Identical in `test_inject.py` and `test_pjx_theme_inject.py`. Keep one. |
 
 No two sources of any merge share a test function name, a test class name or any other
@@ -475,6 +497,10 @@ collected counts equal the sums). Duplicate imports are expected and are what
 `browser/builtins/test_pjx_chip_input.py`. Keep the import there, because
 `test_pjx_chip_input_build_chip.py` annotates with `Page`, which it imports only under
 `TYPE_CHECKING`.
+
+`test_props_header_parse.py` and `test_props_header_build.py` are not merged: with
+`test_stale_header_warning.py`, which also belongs to `props_header`, the module's tests
+total 934 lines, so it gets a folder.
 
 ### 2.3 Conftests, helpers and files beside tests
 
@@ -490,8 +516,8 @@ collected counts equal the sums). Duplicate imports are expected and are what
 | `pyjinhx/integrations/__init__.py` | (deleted) |
 | `pyjinhx/header_names.py` | `fixtures/header_names.py` |
 | `pyjinhx/header_import_probe.py` | `fixtures/header_import_probe.py` |
-| `pyjinhx/stale_card.pjx` | `unit/rendering/stale_card.pjx` (stays beside its test, see section 7) |
-| `pyjinhx/stale_badge.pjx` | `unit/rendering/stale_badge.pjx` (stays beside its test, see section 7) |
+| `pyjinhx/stale_card.pjx` | `unit/components/props_header/stale_card.pjx` (stays beside its test, see section 7) |
+| `pyjinhx/stale_badge.pjx` | `unit/components/props_header/stale_badge.pjx` (stays beside its test, see section 7) |
 | `pyjinhx/broken_demo.pjx` | `docs/broken_demo.pjx` (stays beside its test, see section 7) |
 | `fixtures/__init__.py` | `fixtures/__init__.py` |
 | `fixtures/bench_builtin_heavy.py` | `fixtures/bench/bench_builtin_heavy.py` |
@@ -626,6 +652,18 @@ which must stay beside `cycle_badge.pjx`.
 - `tests/fixtures/block_grammar/` (81 files)
 - `tests/fixtures/fewer_files/` (96 files)
 
+### 2.6 Where this differs from section 9 of the package plan
+
+| Test file | Package plan says | This plan | Why |
+|---|---|---|---|
+| `test_orphan_tags.py` | `components/` under discovery | `components/classless/` | It drives `component()` and header-only templates; discovery is only the lookup. |
+| `test_direct_nesting.py` | `rendering/` under pipeline | `rendering/template_context/` | It is about a component instance placed in a slot field, like the `test_slot_*` files. |
+| `test_descriptor.py` | `components/test_class_descriptor.py` | `components/base/test_descriptor.py` | `test_class_descriptor.py` is the name taken by today's `test_component_descriptor.py`. |
+| `test_sfc_component.py` | not listed | `components/base/test_inline_template.py` | It tests classes that carry an inline `template`, which `base` resolves; only the three scanner files go to `document/`. |
+| `test_pjx_python_component.py` | not listed | `components/importer/test_document_class.py` | It tests the class a `{#python` document binds on import. |
+| `test_markers.py`, `test_render_context.py` | joined into one `test_template_context.py` | two files in `rendering/template_context/` | With the slot files the module passes 800 lines, so it is a folder, and files in a folder are not merged. |
+| basename collisions | add `__init__.py` or keep distinct names | neither | `--import-mode=importlib` (5.1) makes same-named files in different folders legal. |
+
 ## 3. References that must change
 
 ### 3.1 Dotted module names
@@ -668,7 +706,7 @@ are left out. A mixed file's row applies to both halves.
 | `pyjinhx/builtins/pjx_drawer/test_pjx_drawer_layer.py:14` | `browser/builtins/test_pjx_drawer.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
 | `pyjinhx/builtins/pjx_dropdown/test_pjx_dropdown_layer.py:16` | `browser/builtins/test_pjx_dropdown.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
 | `pyjinhx/builtins/pjx_modal/test_pjx_modal_theme.py:16` | `browser/builtins/test_pjx_modal.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
-| `pyjinhx/builtins/pjx_popover/test_pjx_popover_assets.py:14` | `unit/builtins/test_pjx_popover.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
+| `pyjinhx/builtins/pjx_popover/test_pjx_popover_assets.py:13` | `unit/builtins/test_pjx_popover.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
 | `pyjinhx/builtins/pjx_prompt_dialog/test_pjx_prompt_dialog_theme.py:16` | `browser/builtins/test_pjx_prompt_dialog.py` | `Path(__file__).resolve().parents[4]` | `Path(__file__).resolve().parents[3]` |
 | `pyjinhx/builtins/test_feedback_theme_tokens.py:12` | `unit/builtins/theme_tokens/test_feedback.py` | `Path(__file__).parents[3]` | `Path(__file__).parents[4]` |
 | `pyjinhx/builtins/test_navigation_theme_tokens.py:12` | `unit/builtins/theme_tokens/test_navigation.py` | `Path(__file__).parents[3]` | `Path(__file__).parents[4]` |
@@ -677,31 +715,33 @@ are left out. A mixed file's row applies to both halves.
 | `pyjinhx/integrations/test_reactive_request_cycle.py:123` | `unit/integrations/fastapi/test_request_cycle.py` | `Path(__file__).parent.parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
 | `pyjinhx/reactive/test_reactive_mount.py:28` | `unit/reactive/component/test_mount.py` | `Path(__file__).parent.parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
 | `pyjinhx/reactive/test_reactive_root_attrs.py:27` | `unit/reactive/test_root_attrs.py` | `Path(__file__).parent.parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_asset_emission.py:8` | `unit/assets/test_emission.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_asset_emission.py:205` | `unit/assets/test_emission.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_assets.py:17` | `unit/assets/test_accumulation.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_concurrency.py:45` | `unit/session/test_concurrency.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_direct_nesting.py:25` | `unit/slots/test_direct_nesting.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_discovery.py:13` | `unit/discovery/test_walk.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_discovery_matrix.py:21` | `unit/discovery/test_combined.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_instance_registry.py:31` | `unit/test_registry.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[1] / "fixtures" / "templates"` |
-| `pyjinhx/test_registry.py:13` | `unit/discovery/test_registry.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_children.py:13` | `unit/rendering/test_children.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_cycle_guard.py:13` | `unit/rendering/test_cycle_guard.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_hook.py:18` | `unit/rendering/test_hook.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_integration.py:27` | `unit/rendering/test_integration.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_level.py:12` | `unit/rendering/test_level.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_nested_integration.py:20` | `unit/rendering/test_nested_integration.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_public.py:17` | `unit/rendering/test_public.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_render_public.py:209` | `unit/rendering/test_public.py` | `Path(__file__).parent.parent` | `Path(__file__).parents[2]` |
-| `pyjinhx/test_render_splice.py:14` | `unit/rendering/test_splice.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_replace.py:13` | `unit/discovery/test_replace.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_session.py:24` | `unit/session/test_session.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_slot_collections.py:20` | `unit/slots/test_collections.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_slot_props_view.py:16` | `unit/slots/test_props_view.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_slot_semantics_matrix.py:25` | `unit/slots/test_semantics.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_slot_type_v2.py:21` | `unit/slots/test_slot_type.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
-| `pyjinhx/test_stale_header_warning.py:25` | `unit/rendering/test_stale_header_warning.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
+| `pyjinhx/test_asset_emission.py:8` | `unit/rendering/assets/test_emission.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_asset_emission.py:205` | `unit/rendering/assets/test_emission.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_assets.py:17` | `unit/rendering/assets/test_accumulation.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_block_grammar_corpus.py:16` | `unit/document/test_template_blocks.py` | `Path(__file__).resolve().parents[1]` | `Path(__file__).resolve().parents[2]` |
+| `pyjinhx/test_concurrency.py:45` | `unit/rendering/session/test_concurrency.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_direct_nesting.py:25` | `unit/rendering/template_context/test_direct_nesting.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_discovery.py:13` | `unit/components/discovery/test_walk.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_discovery_matrix.py:21` | `unit/components/discovery/test_combined.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_instance_registry.py:31` | `unit/rendering/test_registry.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[2] / "fixtures" / "templates"` |
+| `pyjinhx/test_props_header_parse.py:244` | `unit/components/props_header/test_parse.py` | `Path(__file__).resolve().parents[2]` | `Path(__file__).resolve().parents[4]` |
+| `pyjinhx/test_registry.py:13` | `unit/components/discovery/test_registry.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_children.py:13` | `unit/rendering/pipeline/test_children.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_cycle_guard.py:13` | `unit/rendering/pipeline/test_cycle_guard.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_hook.py:18` | `unit/rendering/pipeline/test_hook.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_integration.py:27` | `unit/rendering/pipeline/test_integration.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_level.py:12` | `unit/rendering/pipeline/test_level.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_nested_integration.py:20` | `unit/rendering/pipeline/test_nested_integration.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_public.py:17` | `unit/rendering/pipeline/test_public.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_render_public.py:209` | `unit/rendering/pipeline/test_public.py` | `Path(__file__).parent.parent` | `Path(__file__).parents[3]` |
+| `pyjinhx/test_render_splice.py:14` | `unit/rendering/pipeline/test_splice.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_replace.py:13` | `unit/components/discovery/test_replace.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_session.py:24` | `unit/rendering/session/test_session.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_slot_collections.py:20` | `unit/rendering/template_context/test_slot_collections.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_slot_props_view.py:16` | `unit/rendering/template_context/test_slot_props_view.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_slot_semantics_matrix.py:25` | `unit/rendering/template_context/test_slot_semantics.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_slot_type_v2.py:21` | `unit/rendering/template_context/test_slot_type.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
+| `pyjinhx/test_stale_header_warning.py:25` | `unit/components/props_header/test_stale_header_warning.py` | `Path(__file__).parent.parent / "templates"` | `Path(__file__).parents[3] / "fixtures" / "templates"` |
 | `pyjinhx/test_theme_tokens.py:12` | `unit/builtins/theme_tokens/test_stylesheets.py` | `Path(__file__).parents[2]` | `Path(__file__).parents[4]` |
 | `test_bench_scripts_smoke.py:22` | `scripts/test_bench.py` | `Path(__file__).parent.parent` | `Path(__file__).parents[2]` |
 | `test_fold_script.py:22` | `scripts/test_fold_components.py` | `Path(__file__).parent.parent` | `Path(__file__).parents[2]` |
@@ -735,25 +775,25 @@ quotes: `test_render_cycle_guard.py:141`, `test_slot_semantics_matrix.py:189`).
 | `pyjinhx/integrations/test_reactive_request_cycle.py` | `unit/integrations/fastapi/test_request_cycle.py` | `cycle_badge.css` -> `fastapi/cycle_badge.css` (L135, 351, 362, 407); `cycle_badge.js` -> `fastapi/cycle_badge.js` (L136, 352, 363); `cycle_badge.pjx` -> `fastapi/cycle_badge.pjx` (L134); `cycle_card.pjx` -> `fastapi/cycle_card.pjx` (L130); `cycle_nested.pjx` -> `fastapi/cycle_nested.pjx` (L139); `cycle_shell.pjx` -> `fastapi/cycle_shell.pjx` (L142) |
 | `pyjinhx/reactive/test_reactive_mount.py` | `unit/reactive/component/test_mount.py` | `container_only_plain.html` -> `reactive/container_only_plain.html` (L171); `plain_widget.html` -> `reactive/plain_widget.html` (L60); `reactive_keyed_json_attr.html` -> `reactive/reactive_keyed_json_attr.html` (L125); `reactive_keyed_list_widget.html` -> `reactive/reactive_keyed_list_widget.html` (L116); `reactive_keyed_override.html` -> `reactive/reactive_keyed_override.html` (L101); `reactive_keyed_twice.html` -> `reactive/reactive_keyed_twice.html` (L92); `reactive_keyed_widget.html` -> `reactive/reactive_keyed_widget.html` (L83); `reactive_mount_container.html` -> `reactive/reactive_mount_container.html` (L68); `reactive_widget.html` -> `reactive/reactive_widget.html` (L58) |
 | `pyjinhx/reactive/test_reactive_root_attrs.py` | `unit/reactive/test_root_attrs.py` | `inner_badge.html` -> `reactive/inner_badge.html` (L153); `middle_wrap.html` -> `reactive/middle_wrap.html` (L154); `plain_widget.html` -> `reactive/plain_widget.html` (L53); `reactive_attrs.html` -> `reactive/reactive_attrs.html` (L80); `reactive_builtin_root.html` -> `reactive/reactive_builtin_root.html` (L156); `reactive_double_root.html` -> `reactive/reactive_double_root.html` (L159); `reactive_inner_root.html` -> `reactive/reactive_inner_root.html` (L181); `reactive_nested_reactive_root.html` -> `reactive/reactive_nested_reactive_root.html` (L184); `reactive_prestamped.html` -> `reactive/reactive_prestamped.html` (L78); `reactive_prologue_root.html` -> `reactive/reactive_prologue_root.html` (L168); `reactive_shell.html` -> `reactive/reactive_shell.html` (L85, 118, 127); `reactive_void.html` -> `reactive/reactive_void.html` (L76); `reactive_widget.html` -> `reactive/reactive_widget.html` (L51, 82, 112, 115) |
-| `pyjinhx/test_asset_emission.py` | `unit/assets/test_emission.py` | `nested_emit_parent.html` -> `nesting/nested_emit_parent.html` (L562); `plain_div.html` -> `basic/plain_div.html` (L211) |
-| `pyjinhx/test_assets.py` | `unit/assets/test_accumulation.py` | `plain_div.html` -> `basic/plain_div.html` (L31) |
-| `pyjinhx/test_concurrency.py` | `unit/session/test_concurrency.py` | `div.html` -> `basic/div.html` (L111, 120) |
-| `pyjinhx/test_direct_nesting.py` | `unit/slots/test_direct_nesting.py` | `nest_attr.html` -> `nesting/nest_attr.html` (L273); `nest_content.html` -> `nesting/nest_content.html` (L58, 86, 99, 174, 196, 225, 241, 260); `nest_if.html` -> `nesting/nest_if.html` (L141, 155); `nest_leaf.html` -> `nesting/nest_leaf.html` (L49, 80); `nest_wrap.html` -> `nesting/nest_wrap.html` (L115, 127, 167, 189) |
-| `pyjinhx/test_instance_registry.py` | `unit/test_registry.py` | `reactive_widget.html` -> `reactive/reactive_widget.html` (L220, 328) |
-| `pyjinhx/test_render_children.py` | `unit/rendering/test_children.py` | `unknown_host.html` -> `basic/unknown_host.html` (L121) |
-| `pyjinhx/test_render_cycle_guard.py` | `unit/rendering/test_cycle_guard.py` | `cycle_a.html` -> `cycle/cycle_a.html` (L83, 141); `cycle_acyclic_a.html` -> `cycle/cycle_acyclic_a.html` (L88); `cycle_acyclic_b.html` -> `cycle/cycle_acyclic_b.html` (L89); `cycle_acyclic_c.html` -> `cycle/cycle_acyclic_c.html` (L90); `cycle_b.html` -> `cycle/cycle_b.html` (L84); `cycle_card_l2.html` -> `cycle/cycle_card_l2.html` (L93); `cycle_diamond.html` -> `cycle/cycle_diamond.html` (L91); `cycle_long_a.html` -> `cycle/cycle_long_a.html` (L85); `cycle_long_b.html` -> `cycle/cycle_long_b.html` (L86); `cycle_long_c.html` -> `cycle/cycle_long_c.html` (L87); `cycle_passthrough.html` -> `cycle/cycle_passthrough.html` (L92); `cycle_row_l2.html` -> `cycle/cycle_row_l2.html` (L94); `cycle_self.html` -> `cycle/cycle_self.html` (L82) |
-| `pyjinhx/test_render_hook.py` | `unit/rendering/test_hook.py` | `nested_leaf.html` -> `nesting/nested_leaf.html` (L38); `nested_mid.html` -> `nesting/nested_mid.html` (L45); `nested_root.html` -> `nesting/nested_root.html` (L52) |
-| `pyjinhx/test_render_integration.py` | `unit/rendering/test_integration.py` | `integration_attrs.html` -> `integration/integration_attrs.html` (L134); `integration_childless.html` -> `integration/integration_childless.html` (L38); `integration_escape.html` -> `integration/integration_escape.html` (L68); `integration_full.html` -> `integration/integration_full.html` (L173); `integration_slot.html` -> `integration/integration_slot.html` (L104) |
-| `pyjinhx/test_render_level.py` | `unit/rendering/test_level.py` | `bad.html` -> `basic/bad.html` (L174, 666); `broken_assertion.html` -> `basic/broken_assertion.html` (L725); `card.html` -> `basic/card.html` (L292); `child_button.html` -> `basic/child_button.html` (L43); `child_card.html` -> `basic/child_card.html` (L45); `child_icon.html` -> `basic/child_icon.html` (L47); `container.html` -> `basic/container.html` (L110); `div.html` -> `basic/div.html` (L76, 696); `empty.html` -> `basic/empty.html` (L199, 636); `icon.html` -> `basic/icon.html` (L259); `lowercase.html` -> `basic/lowercase.html` (L356); `minimal.html` -> `basic/minimal.html` (L499, 539); `mixedcase.html` -> `basic/mixedcase.html` (L388); `nested.html` -> `basic/nested.html` (L140); `roundtrip.html` -> `basic/roundtrip.html` (L449); `slot_interp.html` -> `slots/slot_interp.html` (L769); `slot_leaf.html` -> `slots/slot_leaf.html` (L760); `slotted.html` -> `slots/slotted.html` (L421); `test.html` -> `basic/test.html` (L226); `unsafe.html` -> `basic/unsafe.html` (L328) |
-| `pyjinhx/test_render_nested_integration.py` | `unit/rendering/test_nested_integration.py` | `nested_bad_leaf.html` -> `nesting/nested_bad_leaf.html` (L273); `nested_bad_mid.html` -> `nesting/nested_bad_mid.html` (L280); `nested_bad_root.html` -> `nesting/nested_bad_root.html` (L287); `nested_branches.html` -> `nesting/nested_branches.html` (L108); `nested_full_mid.html` -> `nesting/nested_full_mid.html` (L223); `nested_full_root.html` -> `nesting/nested_full_root.html` (L230); `nested_leaf.html` -> `nesting/nested_leaf.html` (L40); `nested_loop.html` -> `nesting/nested_loop.html` (L184); `nested_mid.html` -> `nesting/nested_mid.html` (L47); `nested_mixed_mid.html` -> `nesting/nested_mixed_mid.html` (L140); `nested_mixed_root.html` -> `nesting/nested_mixed_root.html` (L147); `nested_root.html` -> `nesting/nested_root.html` (L54) |
-| `pyjinhx/test_render_public.py` | `unit/rendering/test_public.py` | `bad.html` -> `basic/bad.html` (L161); `div.html` -> `basic/div.html` (L42, 182, 191, 210); `empty.html` -> `basic/empty.html` (L171); `roundtrip.html` -> `basic/roundtrip.html` (L59) |
-| `pyjinhx/test_render_splice.py` | `unit/rendering/test_splice.py` | `splice_bad_child.html` -> `splice/splice_bad_child.html` (L131); `splice_bad_parent.html` -> `splice/splice_bad_parent.html` (L138); `splice_child.html` -> `splice/splice_child.html` (L34); `splice_mixed.html` -> `splice/splice_mixed.html` (L99); `splice_parent.html` -> `splice/splice_parent.html` (L41); `splice_plain.html` -> `splice/splice_plain.html` (L48); `splice_siblings.html` -> `splice/splice_siblings.html` (L92) |
-| `pyjinhx/test_session.py` | `unit/session/test_session.py` | `plain_div.html` -> `basic/plain_div.html` (L232, 872) |
-| `pyjinhx/test_slot_collections.py` | `unit/slots/test_collections.py` | `nest_wrap.html` -> `nesting/nest_wrap.html` (L344); `slot_dict.html` -> `slots/slot_dict.html` (L162, 204, 365, 384, 395, 403, 447); `slot_if.html` -> `slots/slot_if.html` (L479, 487, 495, 505); `slot_interp.html` -> `slots/slot_interp.html` (L214, 226); `slot_leaf.html` -> `slots/slot_leaf.html` (L44); `slot_list.html` -> `slots/slot_list.html` (L145, 179, 187, 194, 236, 251, 265, 276, 287, 307, 328, 350, 464); `slot_list_len.html` -> `slots/slot_list_len.html` (L420, 433) |
-| `pyjinhx/test_slot_props_view.py` | `unit/slots/test_props_view.py` | `nest_content.html` -> `nesting/nest_content.html` (L487); `nest_wrap.html` -> `nesting/nest_wrap.html` (L428); `slot_if.html` -> `slots/slot_if.html` (L374, 381); `slot_interp.html` -> `slots/slot_interp.html` (L363); `slot_leaf.html` -> `slots/slot_leaf.html` (L37, 481); `slot_props.html` -> `slots/slot_props.html` (L278, 289, 298, 319, 330, 411, 430); `slot_props_bare_view.html` -> `slots/slot_props_bare_view.html` (L339); `slot_props_dict.html` -> `slots/slot_props_dict.html` (L399); `slot_props_list.html` -> `slots/slot_props_list.html` (L388) |
-| `pyjinhx/test_slot_semantics_matrix.py` | `unit/slots/test_semantics.py` | `nest_content.html` -> `nesting/nest_content.html` (L71, 156, 189, 529, 536, 591, 645); `nest_if.html` -> `nesting/nest_if.html` (L89, 103, 110); `nest_leaf.html` -> `nesting/nest_leaf.html` (L49); `slot_dict.html` -> `slots/slot_dict.html` (L362, 383, 399); `slot_header_content.html` -> `slots/slot_header_content.html` (L285); `slot_leaf.html` -> `slots/slot_leaf.html` (L340); `slot_list.html` -> `slots/slot_list.html` (L352, 377, 408); `slot_list_len.html` -> `slots/slot_list_len.html` (L393); `slot_mixed_kinds.html` -> `slots/slot_mixed_kinds.html` (L120, 129, 143); `slot_props.html` -> `slots/slot_props.html` (L455, 472, 480, 504); `slot_props_dict.html` -> `slots/slot_props_dict.html` (L428); `slot_props_list.html` -> `slots/slot_props_list.html` (L421, 435) |
-| `pyjinhx/test_slot_type_v2.py` | `unit/slots/test_slot_type.py` | `div.html` -> `basic/div.html` (L224); `nest_content.html` -> `nesting/nest_content.html` (L577, 592); `slot_if.html` -> `slots/slot_if.html` (L225, 237); `slot_interp.html` -> `slots/slot_interp.html` (L271, 289, 311, 371); `slot_leaf.html` -> `slots/slot_leaf.html` (L270, 310) |
-| `pyjinhx/test_stale_header_warning.py` | `unit/rendering/test_stale_header_warning.py` | `stale_render.html` -> `basic/stale_render.html` (L78, 147) |
+| `pyjinhx/test_asset_emission.py` | `unit/rendering/assets/test_emission.py` | `nested_emit_parent.html` -> `nesting/nested_emit_parent.html` (L562); `plain_div.html` -> `basic/plain_div.html` (L211) |
+| `pyjinhx/test_assets.py` | `unit/rendering/assets/test_accumulation.py` | `plain_div.html` -> `basic/plain_div.html` (L31) |
+| `pyjinhx/test_concurrency.py` | `unit/rendering/session/test_concurrency.py` | `div.html` -> `basic/div.html` (L111, 120) |
+| `pyjinhx/test_direct_nesting.py` | `unit/rendering/template_context/test_direct_nesting.py` | `nest_attr.html` -> `nesting/nest_attr.html` (L273); `nest_content.html` -> `nesting/nest_content.html` (L58, 86, 99, 174, 196, 225, 241, 260); `nest_if.html` -> `nesting/nest_if.html` (L141, 155); `nest_leaf.html` -> `nesting/nest_leaf.html` (L49, 80); `nest_wrap.html` -> `nesting/nest_wrap.html` (L115, 127, 167, 189) |
+| `pyjinhx/test_instance_registry.py` | `unit/rendering/test_registry.py` | `reactive_widget.html` -> `reactive/reactive_widget.html` (L220, 328) |
+| `pyjinhx/test_render_children.py` | `unit/rendering/pipeline/test_children.py` | `unknown_host.html` -> `basic/unknown_host.html` (L121) |
+| `pyjinhx/test_render_cycle_guard.py` | `unit/rendering/pipeline/test_cycle_guard.py` | `cycle_a.html` -> `cycle/cycle_a.html` (L83, 141); `cycle_acyclic_a.html` -> `cycle/cycle_acyclic_a.html` (L88); `cycle_acyclic_b.html` -> `cycle/cycle_acyclic_b.html` (L89); `cycle_acyclic_c.html` -> `cycle/cycle_acyclic_c.html` (L90); `cycle_b.html` -> `cycle/cycle_b.html` (L84); `cycle_card_l2.html` -> `cycle/cycle_card_l2.html` (L93); `cycle_diamond.html` -> `cycle/cycle_diamond.html` (L91); `cycle_long_a.html` -> `cycle/cycle_long_a.html` (L85); `cycle_long_b.html` -> `cycle/cycle_long_b.html` (L86); `cycle_long_c.html` -> `cycle/cycle_long_c.html` (L87); `cycle_passthrough.html` -> `cycle/cycle_passthrough.html` (L92); `cycle_row_l2.html` -> `cycle/cycle_row_l2.html` (L94); `cycle_self.html` -> `cycle/cycle_self.html` (L82) |
+| `pyjinhx/test_render_hook.py` | `unit/rendering/pipeline/test_hook.py` | `nested_leaf.html` -> `nesting/nested_leaf.html` (L38); `nested_mid.html` -> `nesting/nested_mid.html` (L45); `nested_root.html` -> `nesting/nested_root.html` (L52) |
+| `pyjinhx/test_render_integration.py` | `unit/rendering/pipeline/test_integration.py` | `integration_attrs.html` -> `integration/integration_attrs.html` (L134); `integration_childless.html` -> `integration/integration_childless.html` (L38); `integration_escape.html` -> `integration/integration_escape.html` (L68); `integration_full.html` -> `integration/integration_full.html` (L173); `integration_slot.html` -> `integration/integration_slot.html` (L104) |
+| `pyjinhx/test_render_level.py` | `unit/rendering/pipeline/test_level.py` | `bad.html` -> `basic/bad.html` (L174, 666); `broken_assertion.html` -> `basic/broken_assertion.html` (L725); `card.html` -> `basic/card.html` (L292); `child_button.html` -> `basic/child_button.html` (L43); `child_card.html` -> `basic/child_card.html` (L45); `child_icon.html` -> `basic/child_icon.html` (L47); `container.html` -> `basic/container.html` (L110); `div.html` -> `basic/div.html` (L76, 696); `empty.html` -> `basic/empty.html` (L199, 636); `icon.html` -> `basic/icon.html` (L259); `lowercase.html` -> `basic/lowercase.html` (L356); `minimal.html` -> `basic/minimal.html` (L499, 539); `mixedcase.html` -> `basic/mixedcase.html` (L388); `nested.html` -> `basic/nested.html` (L140); `roundtrip.html` -> `basic/roundtrip.html` (L449); `slot_interp.html` -> `slots/slot_interp.html` (L769); `slot_leaf.html` -> `slots/slot_leaf.html` (L760); `slotted.html` -> `slots/slotted.html` (L421); `test.html` -> `basic/test.html` (L226); `unsafe.html` -> `basic/unsafe.html` (L328) |
+| `pyjinhx/test_render_nested_integration.py` | `unit/rendering/pipeline/test_nested_integration.py` | `nested_bad_leaf.html` -> `nesting/nested_bad_leaf.html` (L273); `nested_bad_mid.html` -> `nesting/nested_bad_mid.html` (L280); `nested_bad_root.html` -> `nesting/nested_bad_root.html` (L287); `nested_branches.html` -> `nesting/nested_branches.html` (L108); `nested_full_mid.html` -> `nesting/nested_full_mid.html` (L223); `nested_full_root.html` -> `nesting/nested_full_root.html` (L230); `nested_leaf.html` -> `nesting/nested_leaf.html` (L40); `nested_loop.html` -> `nesting/nested_loop.html` (L184); `nested_mid.html` -> `nesting/nested_mid.html` (L47); `nested_mixed_mid.html` -> `nesting/nested_mixed_mid.html` (L140); `nested_mixed_root.html` -> `nesting/nested_mixed_root.html` (L147); `nested_root.html` -> `nesting/nested_root.html` (L54) |
+| `pyjinhx/test_render_public.py` | `unit/rendering/pipeline/test_public.py` | `bad.html` -> `basic/bad.html` (L161); `div.html` -> `basic/div.html` (L42, 182, 191, 210); `empty.html` -> `basic/empty.html` (L171); `roundtrip.html` -> `basic/roundtrip.html` (L59) |
+| `pyjinhx/test_render_splice.py` | `unit/rendering/pipeline/test_splice.py` | `splice_bad_child.html` -> `splice/splice_bad_child.html` (L131); `splice_bad_parent.html` -> `splice/splice_bad_parent.html` (L138); `splice_child.html` -> `splice/splice_child.html` (L34); `splice_mixed.html` -> `splice/splice_mixed.html` (L99); `splice_parent.html` -> `splice/splice_parent.html` (L41); `splice_plain.html` -> `splice/splice_plain.html` (L48); `splice_siblings.html` -> `splice/splice_siblings.html` (L92) |
+| `pyjinhx/test_session.py` | `unit/rendering/session/test_session.py` | `plain_div.html` -> `basic/plain_div.html` (L232, 872) |
+| `pyjinhx/test_slot_collections.py` | `unit/rendering/template_context/test_slot_collections.py` | `nest_wrap.html` -> `nesting/nest_wrap.html` (L344); `slot_dict.html` -> `slots/slot_dict.html` (L162, 204, 365, 384, 395, 403, 447); `slot_if.html` -> `slots/slot_if.html` (L479, 487, 495, 505); `slot_interp.html` -> `slots/slot_interp.html` (L214, 226); `slot_leaf.html` -> `slots/slot_leaf.html` (L44); `slot_list.html` -> `slots/slot_list.html` (L145, 179, 187, 194, 236, 251, 265, 276, 287, 307, 328, 350, 464); `slot_list_len.html` -> `slots/slot_list_len.html` (L420, 433) |
+| `pyjinhx/test_slot_props_view.py` | `unit/rendering/template_context/test_slot_props_view.py` | `nest_content.html` -> `nesting/nest_content.html` (L487); `nest_wrap.html` -> `nesting/nest_wrap.html` (L428); `slot_if.html` -> `slots/slot_if.html` (L374, 381); `slot_interp.html` -> `slots/slot_interp.html` (L363); `slot_leaf.html` -> `slots/slot_leaf.html` (L37, 481); `slot_props.html` -> `slots/slot_props.html` (L278, 289, 298, 319, 330, 411, 430); `slot_props_bare_view.html` -> `slots/slot_props_bare_view.html` (L339); `slot_props_dict.html` -> `slots/slot_props_dict.html` (L399); `slot_props_list.html` -> `slots/slot_props_list.html` (L388) |
+| `pyjinhx/test_slot_semantics_matrix.py` | `unit/rendering/template_context/test_slot_semantics.py` | `nest_content.html` -> `nesting/nest_content.html` (L71, 156, 189, 529, 536, 591, 645); `nest_if.html` -> `nesting/nest_if.html` (L89, 103, 110); `nest_leaf.html` -> `nesting/nest_leaf.html` (L49); `slot_dict.html` -> `slots/slot_dict.html` (L362, 383, 399); `slot_header_content.html` -> `slots/slot_header_content.html` (L285); `slot_leaf.html` -> `slots/slot_leaf.html` (L340); `slot_list.html` -> `slots/slot_list.html` (L352, 377, 408); `slot_list_len.html` -> `slots/slot_list_len.html` (L393); `slot_mixed_kinds.html` -> `slots/slot_mixed_kinds.html` (L120, 129, 143); `slot_props.html` -> `slots/slot_props.html` (L455, 472, 480, 504); `slot_props_dict.html` -> `slots/slot_props_dict.html` (L428); `slot_props_list.html` -> `slots/slot_props_list.html` (L421, 435) |
+| `pyjinhx/test_slot_type_v2.py` | `unit/rendering/template_context/test_slot_type.py` | `div.html` -> `basic/div.html` (L224); `nest_content.html` -> `nesting/nest_content.html` (L577, 592); `slot_if.html` -> `slots/slot_if.html` (L225, 237); `slot_interp.html` -> `slots/slot_interp.html` (L271, 289, 311, 371); `slot_leaf.html` -> `slots/slot_leaf.html` (L270, 310) |
+| `pyjinhx/test_stale_header_warning.py` | `unit/components/props_header/test_stale_header_warning.py` | `stale_render.html` -> `basic/stale_render.html` (L78, 147) |
 
 Left alone on purpose:
 
@@ -790,13 +830,13 @@ four `cycle_*.pjx` plus the ones under `discovery/`), and the orphan set does no
 | `.github/workflows/tests.yml:70` | `tests/minimal` | `tests/packaging/test_minimal_install.py` |
 | `docs/decisions/0005-roster-picker.md:39` | `tests/pyjinhx/builtins/pjx_popover/test_pjx_popover_assets.py` | `tests/unit/builtins/test_pjx_popover.py` |
 | `docs/decisions/0005-roster-picker.md:47` | `tests/pyjinhx/builtins/pjx_roster_picker/test_pjx_roster_picker_js_build.py` | `tests/unit/builtins/pjx_roster_picker/test_js_build.py` |
-| `docs/guide/builtin-conventions.md:42` | `tests/pyjinhx/test_slot_type_v2.py` | `tests/unit/slots/test_slot_type.py` |
+| `docs/guide/builtin-conventions.md:42` | `tests/pyjinhx/test_slot_type_v2.py` | `tests/unit/rendering/template_context/test_slot_type.py` |
 | `pyjinhx/_component.py:10` | `tests/pyjinhx/test_import_graph.py` | `tests/packaging/test_import_graph.py` |
-| `pyjinhx/builtins/ui/pjx_popover/pjx_popover.js:98` | `tests/.../test_pjx_popover_assets.py` | `tests/unit/builtins/test_pjx_popover.py` |
-| `pyjinhx/builtins/ui/pjx_select/pjx_select.js:98` | `tests/.../test_pjx_select_assets.py` | `tests/unit/builtins/pjx_select/test_assets.py` |
-| `pyjinhx/markers.py:93` | `tests/pyjinhx/test_slot_type_v2.py` | `tests/unit/slots/test_slot_type.py` |
+| `pyjinhx/builtins/pjx_popover/pjx_popover.js:98` | `tests/.../test_pjx_popover_assets.py` | `tests/unit/builtins/test_pjx_popover.py` |
+| `pyjinhx/builtins/pjx_select/pjx_select.js:98` | `tests/.../test_pjx_select_assets.py` | `tests/unit/builtins/pjx_select/test_assets.py` |
+| `pyjinhx/markers.py:93` | `tests/pyjinhx/test_slot_type_v2.py` | `tests/unit/rendering/template_context/test_slot_type.py` |
 | `pyjinhx/markers.py:93` | `tests/pyjinhx` | `tests/unit/test_render_context.py (the path continues on the next line)` |
-| `pyjinhx/rendering.py:257` | `tests/pyjinhx/test_assets.py` | `tests/unit/assets/test_accumulation.py` |
+| `pyjinhx/rendering.py:257` | `tests/pyjinhx/test_assets.py` | `tests/unit/rendering/assets/test_accumulation.py` |
 | `scripts/bench_field_count.py:45` | `tests/test_bench_scripts_smoke.py` | `tests/scripts/test_bench.py` |
 | `scripts/bench_mixed_reactive_tree.py:41` | `tests/test_bench_scripts_smoke.py` | `tests/scripts/test_bench.py` |
 | `scripts/bench_parser_tagfree.py:43` | `tests/test_bench_scripts_smoke.py` | `tests/scripts/test_bench.py` |
@@ -812,45 +852,45 @@ four `cycle_*.pjx` plus the ones under `discovery/`), and the orphan set does no
 | `tests/pyjinhx/builtins/pjx_avatar_stack/test_pjx_avatar_stack.py:15` | `tests/pyjinhx/builtins/pjx_badge` | `tests/unit/builtins/test_pjx_badge.py` |
 | `tests/pyjinhx/builtins/pjx_badge/test_pjx_badge.py:19` | `tests/pyjinhx/builtins/pjx_icon` | `tests/unit/builtins/test_pjx_icon.py` |
 | `tests/pyjinhx/builtins/pjx_badge/test_pjx_badge.py:107` | `tests/pyjinhx/builtins/pjx_avatar/test_pjx_avatar.py` | `tests/unit/builtins/test_pjx_avatar.py` |
-| `tests/pyjinhx/builtins/pjx_card/test_pjx_card.py:77` | `tests/pyjinhx/test_slot_collections.py` | `tests/unit/slots/test_collections.py` |
+| `tests/pyjinhx/builtins/pjx_card/test_pjx_card.py:77` | `tests/pyjinhx/test_slot_collections.py` | `tests/unit/rendering/template_context/test_slot_collections.py` |
 | `tests/pyjinhx/builtins/pjx_card/test_pjx_card.py:80` | `tests/pyjinhx/builtins/test_family_display_primitives_sweep.py` | `tests/unit/builtins/families/test_display_primitives.py` |
 | `tests/pyjinhx/builtins/pjx_card_body/test_pjx_card_body.py:17` | `tests/pyjinhx/builtins/pjx_empty_state` | `tests/unit/builtins/test_pjx_empty_state.py` |
 | `tests/pyjinhx/builtins/pjx_chart/conftest.py:17` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
 | `tests/pyjinhx/builtins/pjx_divider/test_pjx_divider.py:17` | `tests/pyjinhx/builtins/pjx_badge` | `tests/unit/builtins/test_pjx_badge.py` |
 | `tests/pyjinhx/builtins/pjx_drawer/test_pjx_drawer.py:152` | `tests/pyjinhx/builtins/pjx_modal/test_pjx_modal.py` | `tests/unit/builtins/test_pjx_modal.py` |
 | `tests/pyjinhx/builtins/pjx_empty_state/test_pjx_empty_state.py:18` | `tests/pyjinhx/builtins/pjx_divider` | `tests/unit/builtins/test_pjx_divider.py` |
-| `tests/pyjinhx/builtins/pjx_graph/conftest.py:86` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
-| `tests/pyjinhx/builtins/pjx_graph/test_pjx_graph_d3_vendor.py:53` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
+| `tests/pyjinhx/builtins/pjx_graph/conftest.py:85` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
+| `tests/pyjinhx/builtins/pjx_graph/test_pjx_graph_d3_vendor.py:52` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
 | `tests/pyjinhx/builtins/pjx_modal/test_pjx_modal.py:91` | `tests/pyjinhx/builtins/pjx_card/test_pjx_card.py` | `tests/unit/builtins/test_pjx_card.py` |
 | `tests/pyjinhx/builtins/pjx_notification/test_pjx_notification.py:22` | `tests/pyjinhx/builtins/test_pjx_region_loader.py` | `tests/unit/builtins/test_pjx_region_loader.py` |
 | `tests/pyjinhx/builtins/pjx_popover/test_pjx_popover_portal.py:3` | `tests/pyjinhx/builtins/pjx_tooltip` | `tests/browser/builtins/pjx_tooltip` |
-| `tests/pyjinhx/builtins/pjx_popover/test_pjx_popover_position.py:32` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
+| `tests/pyjinhx/builtins/pjx_popover/test_pjx_popover_position.py:31` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
 | `tests/pyjinhx/builtins/pjx_progress/test_pjx_progress.py:17` | `tests/pyjinhx/builtins/pjx_divider` | `tests/unit/builtins/test_pjx_divider.py` |
 | `tests/pyjinhx/builtins/pjx_roster_picker/conftest.py:107` | `tests/pyjinhx/client/conftest.py` | `tests/browser/conftest.py` |
 | `tests/pyjinhx/builtins/pjx_skeleton/test_pjx_skeleton.py:17` | `tests/pyjinhx/builtins/pjx_divider` | `tests/unit/builtins/test_pjx_divider.py` |
 | `tests/pyjinhx/builtins/pjx_spinner/test_pjx_spinner.py:17` | `tests/pyjinhx/builtins/pjx_progress` | `tests/unit/builtins/test_pjx_progress.py` |
 | `tests/pyjinhx/builtins/pjx_toggle_switch/test_pjx_toggle_switch.py:5` | `tests/pyjinhx/builtins/pjx_segmented_control` | `tests/unit/builtins/test_pjx_segmented_control.py` |
-| `tests/pyjinhx/builtins/test_family_data_htmx_sweep.py:74` | `tests/pyjinhx/test_render_context.py` | `tests/unit/test_render_context.py` |
-| `tests/pyjinhx/builtins/test_family_data_htmx_sweep.py:79` | `tests/pyjinhx/test_direct_nesting.py` | `tests/unit/slots/test_direct_nesting.py` |
+| `tests/pyjinhx/builtins/test_family_data_htmx_sweep.py:74` | `tests/pyjinhx/test_render_context.py` | `tests/unit/rendering/template_context/test_build_context.py` |
+| `tests/pyjinhx/builtins/test_family_data_htmx_sweep.py:79` | `tests/pyjinhx/test_direct_nesting.py` | `tests/unit/rendering/template_context/test_direct_nesting.py` |
 | `tests/pyjinhx/builtins/test_family_js_heavy_sweep.py:4` | `tests/pyjinhx/builtins/pjx_` | `tests/unit/builtins/` |
 | `tests/pyjinhx/builtins/test_family_js_heavy_sweep.py:15` | `tests/pyjinhx/client/test_pjx_toast.py` | `tests/browser/client/test_toast.py` |
 | `tests/pyjinhx/builtins/test_family_js_heavy_sweep.py:420` | `tests/pyjinhx/client/test_pjx_toast.py` | `tests/browser/client/test_toast.py` |
-| `tests/pyjinhx/builtins/test_feedback_theme_tokens.py:16` | `tests/pyjinhx/test_theme_tokens.py` | `tests/unit/builtins/theme_tokens/test_stylesheets.py` |
-| `tests/pyjinhx/builtins/test_navigation_theme_tokens.py:15` | `tests/pyjinhx/builtins/test_feedback_theme_tokens.py` | `tests/unit/builtins/theme_tokens/test_feedback.py` |
-| `tests/pyjinhx/builtins/test_pjx_lazy_load.py:153` | `tests/pyjinhx/test_asset_emission.py` | `tests/unit/assets/test_emission.py` |
+| `tests/pyjinhx/builtins/test_feedback_theme_tokens.py:15` | `tests/pyjinhx/test_theme_tokens.py` | `tests/unit/builtins/theme_tokens/test_stylesheets.py` |
+| `tests/pyjinhx/builtins/test_navigation_theme_tokens.py:14` | `tests/pyjinhx/builtins/test_feedback_theme_tokens.py` | `tests/unit/builtins/theme_tokens/test_feedback.py` |
+| `tests/pyjinhx/builtins/test_pjx_lazy_load.py:153` | `tests/pyjinhx/test_asset_emission.py` | `tests/unit/rendering/assets/test_emission.py` |
 | `tests/pyjinhx/client/test_page_loader_namespace.py:26` | `tests/pyjinhx/builtins/test_pjx_page_loader.py` | `tests/unit/builtins/test_pjx_page_loader.py` |
 | `tests/pyjinhx/integrations/test_reactive_request_cycle.py:48` | `tests/pyjinhx/reactive/test_reactive_mutations.py` | `tests/unit/reactive/test_mutations.py` |
-| `tests/pyjinhx/reactive/test_fanout_assets.py:206` | `tests/pyjinhx/test_session.py` | `tests/unit/session/test_session.py` |
-| `tests/pyjinhx/reactive/test_fanout_assets.py:332` | `tests/pyjinhx/test_session.py` | `tests/unit/session/test_session.py` |
-| `tests/pyjinhx/reactive/test_reactive_fanout.py:358` | `tests/pyjinhx/test_render_integration.py` | `tests/unit/rendering/test_integration.py` |
+| `tests/pyjinhx/reactive/test_fanout_assets.py:206` | `tests/pyjinhx/test_session.py` | `tests/unit/rendering/session/test_session.py` |
+| `tests/pyjinhx/reactive/test_fanout_assets.py:332` | `tests/pyjinhx/test_session.py` | `tests/unit/rendering/session/test_session.py` |
+| `tests/pyjinhx/reactive/test_reactive_fanout.py:358` | `tests/pyjinhx/test_render_integration.py` | `tests/unit/rendering/pipeline/test_integration.py` |
 | `tests/pyjinhx/test_component.py:571` | `tests/pyjinhx/test_import_graph.py` | `tests/packaging/test_import_graph.py` |
 | `tests/pyjinhx/test_direct_nesting.py:29` | `tests/templates` | `tests/fixtures/templates` |
 | `tests/pyjinhx/test_gallery_demos.py:34` | `tests/pyjinhx/client/test_pjx_theme_inject.py` | `tests/browser/client/test_theme.py / tests/unit/client/test_inject.py` |
 | `tests/pyjinhx/test_gallery_demos.py:361` | `tests/pyjinhx/test_theme_tokens.py` | `tests/unit/builtins/theme_tokens/test_stylesheets.py` |
 | `tests/pyjinhx/test_gallery_theme_toggle_browser.py:40` | `tests/pyjinhx/builtins/pjx_chart/conftest.py` | `tests/browser/conftest.py` |
-| `tests/pyjinhx/test_instance_registry.py:403` | `tests/pyjinhx/test_session.py` | `tests/unit/session/test_session.py` |
-| `tests/pyjinhx/test_render_cache_behavior.py:197` | `tests/pyjinhx/test_assets.py` | `tests/unit/assets/test_accumulation.py` |
-| `tests/pyjinhx/test_render_cache_wiring.py:328` | `tests/pyjinhx/test_assets.py` | `tests/unit/assets/test_accumulation.py` |
+| `tests/pyjinhx/test_instance_registry.py:403` | `tests/pyjinhx/test_session.py` | `tests/unit/rendering/session/test_session.py` |
+| `tests/pyjinhx/test_render_cache_behavior.py:197` | `tests/pyjinhx/test_assets.py` | `tests/unit/rendering/assets/test_accumulation.py` |
+| `tests/pyjinhx/test_render_cache_wiring.py:328` | `tests/pyjinhx/test_assets.py` | `tests/unit/rendering/assets/test_accumulation.py` |
 | `tests/pyjinhx/test_render_public.py:21` | `tests/templates` | `tests/fixtures/templates` |
 | `tests/pyjinhx/test_session.py:213` | `tests/templates` | `tests/fixtures/templates` |
 | `tests/pyjinhx/test_session.py:217` | `tests/templates` | `tests/fixtures/templates` |
@@ -886,7 +926,7 @@ fixture and the marker hook.
 
 | Fixture | Today | After | Same tests? |
 |---|---|---|---|
-| `render_cost_decisions`, `load_cost_decisions`, `no_orphan_templates`, `cache_everything_by_default` (all autouse, function scope) | `tests/pyjinhx/**`: 6060 tests | `tests/**`: 6296 tests | No: 236 more (below) |
+| `render_cost_decisions`, `load_cost_decisions`, `no_orphan_templates`, `cache_everything_by_default` (all autouse, function scope) | `tests/pyjinhx/**`: 6059 tests | `tests/**`: 6295 tests | No: 236 more (below) |
 | `render_session`, `write` (and the `Write` alias) | `tests/pyjinhx/**` | `tests/**` | Yes; only requested by name |
 | `session` (plain `RenderSession()`) | defined twice, in the graph and roster picker conftests | once, here | Yes (below) |
 
@@ -898,8 +938,8 @@ from inside and `test_package_layout.py` from outside). The 236 newly covered te
 
 Why that is safe: each fixture only resets process-wide state to its starting value, or
 sets `PJX_RENDER_CACHE_MIN_US=0` for the test. It was also run: the whole suite with
-the four fixtures registered globally (every one of the 6296 tests requesting them)
-gave the baseline result exactly, `6291 passed, 1 skipped, 3 xfailed, 1 xpassed`.
+the four fixtures registered globally (every test requesting them) gave the baseline
+result.
 The CI minimal-install leg will now import this conftest with no extras installed; its
 imports (`pyjinhx.discovery`, `pyjinhx.reactive.load_cost`, `pyjinhx.render_cache`,
 `pyjinhx.session`) were checked to load with fastapi, starlette, diskcache, redis, httpx
@@ -940,8 +980,8 @@ installed). The other three copies test `page` only, which is equivalent because
 - The difference is 21 tests in nine mixed files (button, carousel, chip_input,
   form_field, password_input, segmented_control, select, stack, toggle_switch) that have
   no guard today. With chromium installed nothing changes. Without it they now skip
-  cleanly where today they error. Apart from the `todo_registry` fixture in 7.1, that
-  is the only deliberate change to how any test behaves.
+  cleanly where today they error. Apart from the two order fixes in 7.1, that is the
+  only deliberate change to how any test behaves.
 - The 22 module-level copies stay as they are; a module's own fixture overrides the
   conftest one and does the same thing. Removing them is a follow-up.
 - Non-browser tests that used to sit under those four conftests ran the guard as a
@@ -980,14 +1020,14 @@ is clean.
 
 **`pyjinhx/builtins/pjx_graph/test_pjx_graph_d3_vendor.py`** -> `unit/builtins/pjx_graph/test_d3_vendor.py` keeps the rest; `browser/builtins/pjx_graph/test_d3_vendor.py` receives:
 
-- `test_exposes_exactly_the_engine_surface` (L136-146)
-- `test_does_not_define_global_d3` (L149-150)
-- `test_zoom_identity_builds_transforms` (L153-157)
-- `test_zoom_installs_on_an_element_and_reads_back_identity` (L160-169)
-- `test_selection_has_transition_side_effect` (L172-178)
-- `test_evaluating_twice_does_not_throw` (L181-183)
-- `test_binding_stays_local_inside_a_function_wrapper` (L186-193)
-- moves with them (used by nothing else): `d3_page` (L65)
+- `test_exposes_exactly_the_engine_surface` (L135-145)
+- `test_does_not_define_global_d3` (L148-149)
+- `test_zoom_identity_builds_transforms` (L152-156)
+- `test_zoom_installs_on_an_element_and_reads_back_identity` (L159-168)
+- `test_selection_has_transition_side_effect` (L171-177)
+- `test_evaluating_twice_does_not_throw` (L180-182)
+- `test_binding_stays_local_inside_a_function_wrapper` (L185-192)
+- moves with them (used by nothing else): `d3_page` (L64)
 - copied, because both halves use it: `SOURCE` (L19)
 
 **`pyjinhx/builtins/pjx_graph/test_pjx_graph_js_build.py`** -> `unit/builtins/pjx_graph/test_js_build.py` keeps the rest; `browser/builtins/pjx_graph/test_js_build.py` receives:
@@ -1006,14 +1046,14 @@ is clean.
 
 **`pyjinhx/builtins/pjx_roster_picker/test_pjx_roster_picker.py`** -> `unit/builtins/pjx_roster_picker/test_pjx_roster_picker.py` keeps the rest; `browser/builtins/pjx_roster_picker/test_theme.py` receives:
 
-- `test_roster_picker_defaults_use_light_fallbacks` (L822-839)
-- `test_roster_picker_results_layer_follows_popover_token` (L842-867)
-- `test_roster_picker_follows_dark_theme` (L870-881)
-- `test_roster_picker_follows_os_dark_preference` (L884-888)
-- `test_roster_picker_portalled_results_keep_their_layer` (L891-894)
-- `test_roster_picker_reduced_motion_drops_transitions` (L897-901)
-- moves with them (used by nothing else): `PICKER_MARKUP` (L779), `PORTALLED_MARKUP` (L798), `_picker_page` (L801), `_picker_style` (L809), `_root_token` (L816)
-- copied, because both halves use it: `PACKAGE_DIR` (L18), `CSS_PATH` (L25)
+- `test_roster_picker_defaults_use_light_fallbacks` (L818-835)
+- `test_roster_picker_results_layer_follows_popover_token` (L838-863)
+- `test_roster_picker_follows_dark_theme` (L866-877)
+- `test_roster_picker_follows_os_dark_preference` (L880-884)
+- `test_roster_picker_portalled_results_keep_their_layer` (L887-890)
+- `test_roster_picker_reduced_motion_drops_transitions` (L893-897)
+- moves with them (used by nothing else): `PICKER_MARKUP` (L775), `PORTALLED_MARKUP` (L794), `_picker_page` (L797), `_picker_style` (L805), `_root_token` (L812)
+- copied, because both halves use it: `PACKAGE_DIR` (L18), `CSS_PATH` (L21)
 
 **`pyjinhx/builtins/pjx_segmented_control/test_pjx_segmented_control.py`** -> `unit/builtins/test_pjx_segmented_control.py` keeps the rest; `browser/builtins/test_pjx_segmented_control.py` receives:
 
@@ -1076,19 +1116,18 @@ addopts = ["--import-mode=importlib"]
 markers = [
     "browser: needs a Playwright chromium page (tests/browser)",
     "docs: checks documentation and its examples (tests/docs)",
-    "slow: starts subprocesses or whole apps (tests/scripts, tests/packaging, tests/apps)",
 ]
 ```
 
 `--import-mode=importlib` is required, not cosmetic. Today pytest names each test module
 by its bare file name, so two files called `test_assets.py` cannot coexist unless a
 folder has an `__init__.py`. The new layout has such pairs on purpose
-(`unit/test_registry.py` and `unit/discovery/test_registry.py`; `unit/assets/` and
-`unit/reactive/test_assets.py`; `unit/builtins/test_pjx_button.py` and
+(`unit/rendering/test_registry.py` and `unit/components/discovery/test_registry.py`;
+`unit/rendering/test_root_attrs.py` and `unit/reactive/test_root_attrs.py`; `unit/builtins/test_pjx_button.py` and
 `browser/builtins/test_pjx_button.py`). With importlib mode a module is named by its
 path (`tests.unit.reactive.test_assets`), no `__init__.py` is needed anywhere, and the
 two existing ones are removed. The whole suite was run
-with `--import-mode=importlib` on the current layout and gave the baseline result exactly.
+with `--import-mode=importlib` on the current layout and gave the baseline result.
 
 What changes under it: a class defined in a test module reports `__module__` as
 `tests.unit.test_x` instead of `test_x`. Discovery breaks tag ties by qualified class
@@ -1100,35 +1139,27 @@ In `tests/conftest.py`:
 
 ```python
 TESTS = Path(__file__).parent
-FOLDER_MARKERS = {
-    "browser": "browser",
-    "docs": "docs",
-    "scripts": "slow",
-    "packaging": "slow",
-    "apps": "slow",
-}
 
 
 def pytest_collection_modifyitems(items):
     for item in items:
         folder = item.path.relative_to(TESTS).parts[0]
-        if folder in FOLDER_MARKERS:
-            item.add_marker(FOLDER_MARKERS[folder])
+        if folder in ("browser", "docs"):
+            item.add_marker(folder)
 ```
+
+Decided: only `browser` and `docs`; there is no `slow` marker.
 
 Expected selections once everything has moved:
 
 | Command | Collected |
 |---|---|
 | `uv run pytest -m browser --co -q \| tail -1` | 971 |
-| `uv run pytest -m "not browser" --co -q \| tail -1` | 5325 |
+| `uv run pytest -m "not browser" --co -q \| tail -1` | 5324 |
 | `uv run pytest -m docs --co -q \| tail -1` | 103 |
-| `uv run pytest -m slow --co -q \| tail -1` | 488 |
-| `uv run pytest -m "not browser and not slow and not docs" --co -q \| tail -1` | 4734 |
 
 Measured time per folder in the baseline run: browser 268s, unit 31s, docs 5s, apps 5s,
-scripts 2s, packaging 1s. So `-m "not browser"` is the fast loop (under a minute), and
-`slow` does not buy much today (question 3).
+scripts 2s, packaging 1s. `-m "not browser"` is the fast loop, under a minute.
 
 ### 5.3 CI
 
@@ -1138,10 +1169,9 @@ scripts 2s, packaging 1s. So `-m "not browser"` is the fast loop (under a minute
 | `.github/workflows/tests.yml:70` | `.venv-min/bin/python -m pytest tests/minimal/ -q` | `.venv-min/bin/python -m pytest tests/packaging/test_minimal_install.py -q` |
 | `.github/workflows/docs-check.yml:35` | `uv run pytest tests/pyjinhx/test_docs_reference_real_fields.py -q` | `uv run pytest tests/docs/test_reference_real_fields.py -q` |
 
-The first row changes what CI does: today `tests/pyjinhx/` runs twice (once alone, once
-inside `tests/`). The new pair runs every test once and fails early on the quick half
-(question 4). If the maintainer wants the old shape kept, the literal translation is
-a single `uv run pytest`.
+The first row changes what CI does, and is approved: today `tests/pyjinhx/` runs twice
+(once alone, once inside `tests/`); the new pair runs every test once and fails early on
+the quick half.
 
 The minimal leg names one file on purpose. `tests/packaging/` also holds
 `test_package_layout.py`, which runs `git ls-files` and is not meant for that leg. The
@@ -1152,10 +1182,10 @@ imports it.
 
 ## 6. Steps
 
-After every step: `uv run pytest --co -q | tail -1` must still say 6296 collected, then
+After every step: `uv run pytest --co -q | tail -1` must still say 6295 collected, then
 the listed check, then commit. The quick loop while browser tests are not involved is
 `uv run pytest -q -k "not chromium"` (every browser test id ends in `[chromium]`), about
-50 seconds, expected `5320 passed, 1 skipped, 3 xfailed, 1 xpassed`. Run the full suite
+50 seconds, expected `5319 passed, 1 skipped, 4 xfailed` (or `3 xfailed, 1 xpassed`, see the baseline note). Run the full suite
 at the steps that say so.
 
 ### Step 1. Import mode
@@ -1211,11 +1241,13 @@ and 6 finish them. Then fix that folder's rows of 3.2.
 | Sub-step | Folder | Notes | Check |
 |---|---|---|---|
 | 4.1 | `tests/apps/todo/` | `git mv tests/examples tests/apps/todo`, then rename by glob: `for f in tests/apps/todo/test_todo_*.py; do git mv "$f" "${f/test_todo_/test_}"; done`. The conftest travels with the folder; add `todo_registry` to it (7.1). | `uv run pytest tests/pyjinhx/test_fewer_files_startup.py tests/apps/todo -q` -> 73 passed (that order fails without the fixture) |
-| 4.2 | `tests/packaging/` | `git mv tests/minimal/*.py` by glob; if the folder holds one test file, name it `test_minimal_install.py`. Fix the two skip entries in `test_package_layout.py` (3.2). | `uv run pytest tests/packaging -q` -> 250 |
+| 4.2 | `tests/packaging/` | `git mv tests/minimal/*.py` by glob; if the folder holds one test file, name it `test_minimal_install.py`. Fix the two skip entries in `test_package_layout.py` (3.2). | `uv run pytest tests/packaging -q` -> 249 |
 | 4.3 | `tests/apps/fewer_files/` | No path edits: both files anchor on the fixture package. | `uv run pytest tests/apps -q` -> 129 |
 | 4.4 | `tests/scripts/` | | `uv run pytest tests/scripts -q` -> 109 |
 | 4.5 | `tests/docs/` | `broken_demo.pjx` moves with `test_gallery_demos.py` (section 7.4). | `uv run pytest tests/docs -q` -> 103 |
-| 4.6 | `tests/unit/` core modules and their folders | `stale_card.pjx` and `stale_badge.pjx` move with `test_stale_header_warning.py`. `test_registry.py` -> `discovery/test_registry.py` must happen before `test_instance_registry.py` -> `unit/test_registry.py`. | quick loop |
+| 4.6a | `tests/unit/` top level and `document/` | | quick loop |
+| 4.6b | `tests/unit/components/` | `stale_card.pjx` and `stale_badge.pjx` move with `test_stale_header_warning.py` into `props_header/`. Apply the reload fix to `importer/test_import_hook.py` (7.1). | quick loop |
+| 4.6c | `tests/unit/rendering/` | | quick loop |
 | 4.7 | `tests/unit/reactive/`, `integrations/`, `client/` | | quick loop |
 | 4.8 | `tests/unit/builtins/` | Move the graph and roster picker conftests here (4.2) and add `session` to `tests/conftest.py` in the same commit. | `uv run pytest tests/unit -q -k "not chromium"` |
 | 4.9 | `tests/browser/` | Create `tests/browser/conftest.py` first, then `client/conftest.py` and `builtins/pjx_graph/conftest.py` (4.2); delete the chart conftest. | full suite |
@@ -1253,10 +1285,10 @@ Check: the five counts in 5.2; `uv run mkdocs build --strict` (docs prose was to
 ### Step 8. Final verification
 
 ```
-uv run pytest --co -q | tail -1                                   # 6296 tests collected
+uv run pytest --co -q | tail -1                                   # 6295 tests collected
 uv run pytest --co -q | grep :: | sed 's/^[^:]*:://' | sort > /tmp/names.after
 diff /tmp/names.before /tmp/names.after                           # empty
-uv run pytest -q | tail -1                                        # 6291 passed, 1 skipped, 3 xfailed, 1 xpassed
+uv run pytest -q | tail -1                                        # 6290 passed, 1 skipped, 3 xfailed, 1 xpassed
 git grep -nE 'tests/(pyjinhx|templates|minimal|examples)\b|tests\.pyjinhx' -- . ':!CHANGELOG.md' ':!docs/superpowers'   # empty
 git ls-files tests | grep -vE '^tests/(conftest\.py|unit|browser|docs|scripts|packaging|apps|fixtures)(/|$)'             # empty
 find tests -name '*.py' -not -path '*/fixtures/*' -not -name 'test_*' -not -name conftest.py                              # empty
@@ -1277,19 +1309,13 @@ discovery registry, the integrations backend slot, `sys.modules`, the cost verdi
 and several fixtures leave the registry populated on purpose.
 
 This was tested by running the current files in the order the new paths give them
-(apps, browser, docs, packaging, scripts, unit; merged sources in merge order), together
-with the new import mode and the widened autouse fixtures. Result: **5 failures**, all in
-the todo app tests:
+(apps, browser, docs, packaging, scripts, unit, and inside `unit/` the new folders;
+merged sources in merge order), together with the new import mode and the widened
+autouse fixtures. Two order dependences surfaced. Both exist on master today and are
+hidden only by the current alphabetical order; neither has anything to do with the
+import mode.
 
-```
-tests/examples/test_todo_app.py::TestIndex::test_renders_every_seeded_todo
-tests/examples/test_todo_app.py::TestIndex::test_children_are_tag_nested_and_id_stamped
-tests/examples/test_todo_app.py::TestAdd::test_a_follow_up_page_load_shows_it
-tests/examples/test_todo_templates.py::TestApp::test_renders_the_whole_tree
-tests/examples/test_todo_templates.py::TestApp::test_children_render_id_stamped_from_their_tags
-```
-
-The cause is already in the suite today and has nothing to do with the import mode:
+**1. The todo app tests after the fewer-files tests (5 failures).**
 
 ```
 uv run pytest tests/pyjinhx/test_fewer_files_startup.py tests/examples -q    # 5 failed, 68 passed, on master
@@ -1314,10 +1340,38 @@ def todo_registry():
 
 (`from pyjinhx import setup`, `from examples import todo`.) It makes the same call the
 app makes, with the folder located from the package rather than from the working
-directory, so it keeps working whatever shape `refactor/examples-sfc` gives the
-components. With that fixture in place the same run (new order, new
-import mode, widened autouse fixtures) gives the baseline result exactly:
-`6291 passed, 1 skipped, 3 xfailed, 1 xpassed`.
+directory.
+
+**2. One config test after the importer tests (1 failure).**
+
+```
+uv run pytest tests/pyjinhx/test_importer.py tests/pyjinhx/test_instance_registry.py \
+  "tests/pyjinhx/test_config_v2.py::test_reactive_dev_calls_the_dev_hooks_when_available" -q    # 1 failed, on master
+```
+
+`test_importer.py::test_reloading_pyjinhx_keeps_one_finder` calls
+`importlib.reload(pyjinhx)`, and `pyjinhx/__init__.py` installs a fresh module object in
+`sys.modules` each time it runs. Every test module that did `import pyjinhx` at
+collection then holds the old object. The config test deletes `dev` from the object it
+holds, which is no longer the one `from pyjinhx import dev` reads, so its fake `dev`
+module is never used. Today `test_config_v2.py` runs before `test_importer.py`. In the
+new layout `unit/components/importer/` sorts before `unit/test_config.py`. This one
+appeared only with the package-mirroring layout; the earlier flat `unit/` kept the old
+relative order by luck.
+
+Fix, in the reload test itself, in step 4.6b:
+
+```python
+def test_reloading_pyjinhx_keeps_one_finder(hook_state, monkeypatch):
+    # reload installs a new package object; put the original back afterwards
+    monkeypatch.setitem(sys.modules, "pyjinhx", pyjinhx)
+    importlib.reload(pyjinhx)
+    assert len(finders()) == 1
+```
+
+With both fixes the full run in the new order, with the new import mode and the widened
+autouse fixtures, gives `6290 passed, 1 skipped, 4 xfailed`: the baseline, with the
+flaky xfail on its other side.
 
 ### 7.2 Autouse fixtures reaching further
 
@@ -1327,7 +1381,7 @@ that carry one:
 
 | Merged file | Autouse fixture | Now also covers | Trial result |
 |---|---|---|---|
-| `unit/test_responses.py` | `_publish_registry` from `test_compose_fanout.py` (publishes three widget classes) | the 12 tests of `test_responses.py` | pass |
+| `unit/integrations/test_responses.py` | `_publish_registry` from `test_compose_fanout.py` (publishes three widget classes) | the 12 tests of `test_responses.py` | pass |
 | `unit/builtins/test_builtins.py` | `reset_registry` from `test_builtin_autoregistration.py` | the 4 tests of `test_builtin_extra_attrs.py` | pass |
 | `browser/builtins/test_pjx_chip_input.py` | `_require_chromium` | 2 tests, which now have it from the conftest anyway | not trialled (browser) |
 | `unit/test_config.py` + dispatch | `_empty_backend_registry` | 53 config tests | **fails; merge dropped** (2.2) |
@@ -1337,10 +1391,7 @@ shows the failure is real and not obvious from reading.
 
 ### 7.3 Module-level state in merged files
 
-`test_props_header_parse.py` and `test_props_header_build.py` both pop
-`tests.fixtures.header_import_probe` from `sys.modules` and assert on whether it is
-imported. Each test pops before asserting, so they stay independent in one file (trial:
-118 pass). `unit/integrations/test_base.py` reads its own source and fails if the words
+`unit/integrations/test_base.py` reads its own source and fails if the words
 for the web framework appear more than once each; `integrations/test_registry.py`
 contains neither, so appending it is safe, but nothing that names the framework may be
 merged into that file later.
@@ -1353,7 +1404,7 @@ folder of the module that defines it. Three tracked templates exist only for tha
 asserts the resolved path at line 42) and `broken_demo.pjx` (class inside
 `test_gallery_demos.py::test_missing_asset_file_fails_the_build`). They must sit in the
 same folder as those test files, so they break the "nothing beside tests" rule on
-purpose (question 2). If `broken_demo.pjx` goes missing the test still passes, for the
+purpose. Decided: they stay beside their tests. If `broken_demo.pjx` goes missing the test still passes, for the
 wrong reason: a missing template is also an `OSError`.
 
 Related: `test_sfc_component.py` holds inline templates and asserts on its own path and
@@ -1362,10 +1413,10 @@ asserts on `Path(__file__).parent` in ten places, which follows the file.
 
 ### 7.5 Two files trade a name
 
-`unit/test_registry.py` is today's `test_instance_registry.py` (it tests
-`pyjinhx/registry.py`), while today's `test_registry.py` (the discovery registry) becomes
-`unit/discovery/test_registry.py`. Do the moves in the order given in step 4.6 and
-expect `git log --follow` to need the old name for either.
+`unit/rendering/test_registry.py` is today's `test_instance_registry.py` (it tests the
+request-scoped instance registry), while today's `test_registry.py` (the discovery
+class registry) becomes `unit/components/discovery/test_registry.py`. Expect
+`git log --follow` to need the old name for either.
 
 ### 7.6 Fixture names defined in several places
 
@@ -1389,23 +1440,17 @@ of a mixed file included) but cannot make a merged file's sources share module-l
 fixtures; the scratch trial covers that part, for the non-browser merges only. The path edits in section 3 and the splits in 4.3 are derived by script from the
 sources and have not been executed.
 
-## 8. Questions for the maintainer
+## 8. Decisions taken
 
-1. Twelve existing files are over 800 lines (section 1), the largest 2659. This plan
-   moves them whole. Should a follow-up split them, and should that include the
-   function-style ones (`test_reactive_fanout.py`, `test_manifest.py`, `test_session.py`)
-   where helpers are interleaved with tests?
-2. `stale_card.pjx`, `stale_badge.pjx` and `broken_demo.pjx` stay beside their tests
-   (7.4). The alternative is to move the two `Stale*` classes into a
-   `tests/fixtures/stale_header/` package and give `BrokenDemo` an inline template, which
-   edits test code. Keep the exception, or move them?
-3. `slow` is applied to `scripts/`, `packaging/` and `apps/`, which together take about
-   8 seconds. Is that the intended meaning, or should each folder simply carry its own
-   name as a marker (`scripts`, `packaging`, `apps`, `unit`)?
-4. CI today runs `tests/pyjinhx/` twice. The plan replaces that with one fast step and
-   one browser step. Acceptable?
-5. `unit/slots/` is a feature folder, not a source module. The alternative is to put the
-   five slot files in `unit/rendering/` (fifteen files in one folder). Preference?
-6. `unit/builtins/pjx_graph/` and `pjx_roster_picker/` group several source modules so
-   each family can share its `parse_html`. Fine, or flatten them and give the two
-   fixtures different names?
+| Question | Decision |
+|---|---|
+| Order against the package reorganisation | Package layout first; `tests/unit/` mirrors it (section 0). |
+| The twelve files over 800 lines | Move whole now; split in a follow-up PR. |
+| Markers | `browser` and `docs` only. |
+| Slot tests | Under `unit/rendering/` (in `template_context/`). |
+| `unit/builtins/pjx_graph/` and `pjx_roster_picker/` | Keep the folders. |
+| CI | `-m "not browser"` then `-m browser`. |
+| `stale_card.pjx`, `stale_badge.pjx`, `broken_demo.pjx` | Stay beside their tests. |
+
+Nothing is open. The placements in 2.6 are this plan's own calls where the package plan
+said something else; each is one `git mv` to change.
