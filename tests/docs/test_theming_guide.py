@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = _ROOT / "docs" / "guide" / "theming.md"
 _SHEET = _ROOT / "pyjinhx" / "client" / "pjx_theme.css"
 # Lookahead skips family names written as `--pjx-color-*` or `--pjx-chart-series-N`.

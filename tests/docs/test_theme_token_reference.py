@@ -12,7 +12,7 @@ import pytest
 
 import pyjinhx.builtins  # noqa: F401
 
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = Path(__file__).resolve().parents[2]
 _DOCS = _ROOT / "docs"
 _SHEET = _ROOT / "pyjinhx" / "client" / "pjx_theme.css"
 sys.path.insert(0, str(_DOCS))
