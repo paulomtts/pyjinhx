@@ -1,0 +1,5 @@
+<div id="{{ id }}" class="name-field"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
+  <label for="{{ input_id }}">{{ label }}</label>
+  <input id="{{ input_id }}" name="name" value="{{ value }}"{% if error %} aria-invalid="true"{% endif %}>
+  {% if error %}<p class="field-error" role="alert">{{ error }}</p>{% endif %}
+</div>

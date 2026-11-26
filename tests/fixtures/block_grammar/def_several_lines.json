@@ -1,0 +1,10 @@
+{
+  "blocks": [
+    {
+      "keyword": "def",
+      "open_line": 1,
+      "close_line": 3
+    }
+  ],
+  "error": null
+}

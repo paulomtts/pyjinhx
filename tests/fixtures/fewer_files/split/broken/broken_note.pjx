@@ -1,0 +1,4 @@
+<div class="note">
+  <p>{{ text }}</p>
+  {% if %}
+</div>

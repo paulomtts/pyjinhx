@@ -32,6 +32,16 @@ from pydantic import (
 from pydantic.fields import FieldInfo
 
 from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.importer import first_line, loaded_document
+from pyjinhx.sfc import (
+    BlockSyntaxError,
+    has_markup,
+    pascal_to_snake,
+    python_block,
+    read_document,
+    reworded,
+)
+from pyjinhx.template_blocks import inline_assets
 
 if TYPE_CHECKING:
     # Type-only: the runtime import lives inside render() to avoid the cycle
@@ -211,16 +221,11 @@ def _is_component_typed_annotation(annotation: Any) -> bool:
     return isinstance(annotation, type) and issubclass(annotation, BaseComponent)
 
 
-_PASCAL_BOUNDARY_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+_pascal_to_snake = pascal_to_snake
 
 
-def _pascal_to_snake(name: str) -> str:
-    """Convert a PascalCase/CamelCase identifier to snake_case."""
-    return _PASCAL_BOUNDARY_RE.sub("_", name).lower()
-
-
-def _defining_module_dir(cls: type) -> Path:
-    """Directory of the module that defined ``cls``."""
+def _defining_module_file(cls: type) -> Path:
+    """The source file of the module that defined ``cls``."""
     module = sys.modules.get(cls.__module__)
     file = getattr(module, "__file__", None)
     if file is None:
@@ -229,7 +234,22 @@ def _defining_module_dir(cls: type) -> Path:
             f"no file on disk; template and asset resolution have no directory "
             f"to probe from."
         )
-    return Path(file).parent
+    return Path(file)
+
+
+def _defining_module_dir(cls: type) -> Path:
+    """Directory of the module that defined ``cls``."""
+    return _defining_module_file(cls).parent
+
+
+def _has_inline_template(cls: type) -> bool:
+    """Whether ``cls``'s own body assigns its ``template`` string.
+
+    Only the class's own namespace counts, so a subclass is never mistaken
+    for the owner of what it inherits. A pydantic field named ``template`` is
+    not there either: pydantic moves field defaults off the class.
+    """
+    return isinstance(vars(cls).get("template"), str)
 
 
 def _template_candidate(cls: type) -> Path:
@@ -266,16 +286,24 @@ def _walk_template(cls: type) -> tuple[Path, type | None]:
     last ancestor's candidate, which is returned *without* a probe (ADR 0007's
     budget). An unprobed candidate has no proven owner, so it names none.
 
+    An ancestor that carries an inline ``template`` owns it before any file
+    is probed for that ancestor; the path is then its ``.py`` module. That
+    check reads the class namespace only, so it adds no probe.
+
     Single source of truth for the walk: `_resolve_template_path` and
     `_resolve_provenance` both read this one result, so adding provenance costs
     zero extra `is_file` calls.
     """
-    ancestors = _resolution_ancestors(cls)
-    for ancestor in ancestors[:-1]:
+    *probed, last = _resolution_ancestors(cls)
+    for ancestor in probed:
+        if _has_inline_template(ancestor):
+            return _defining_module_file(ancestor), ancestor
         candidate = _template_candidate(ancestor)
         if candidate.is_file():
             return candidate, ancestor
-    return _template_candidate(ancestors[-1]), None
+    if _has_inline_template(last):
+        return _defining_module_file(last), last
+    return _template_candidate(last), None
 
 
 def _missing_template_error(cls: type) -> LookupError:
@@ -451,6 +479,53 @@ def _resolve_provenance(cls: type) -> Mapping[str, type]:
     return owners
 
 
+def _bind_block_document(
+    cls: type, template_path: Path, owner: type | None, source: str
+) -> type | None:
+    """The class the ``{#python`` block document at ``template_path`` belongs
+    to, or ``owner`` unchanged when ``source`` holds no block.
+
+    The walk hands over an unprobed candidate without naming an owner, so the
+    last ancestor stands in: it is the class the document is named for.
+
+    Raises:
+        TypeError: The document is not the file its class lives in, or it
+            also has a ``{#def#}`` header, or it has no markup.
+    """
+    # Imported here for the cycle props_header has with this module.
+    from pyjinhx.props_header import props_header_line
+
+    named = owner or _resolution_ancestors(cls)[-1]
+    try:
+        block = python_block(source, str(template_path))
+    except BlockSyntaxError as error:
+        raise reworded(
+            error, str(template_path), f"{named.__name__}'s document: {error.msg}"
+        ) from error
+    if block is None:
+        return owner
+    owner_file = _defining_module_file(named)
+    if owner_file.resolve() != template_path.resolve():
+        raise TypeError(
+            f"{template_path}:{block.open_line}: this document holds a "
+            f"{{#python block, and {named.__name__} is defined in {owner_file}. "
+            f"A component's class is in one of them; remove one."
+        )
+    line = props_header_line(source)
+    if line is not None:
+        raise TypeError(
+            f"{template_path}:{line}: a document with a {{#python block cannot "
+            f"also have a {{#def#}} header. The class declares the props; "
+            f"remove the header."
+        )
+    if not has_markup(source):
+        raise TypeError(
+            f"{template_path}:{block.open_line}: this document has a {{#python "
+            f"block and no markup. Write the template after the block."
+        )
+    return named
+
+
 def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     """Build the ClassDescriptor for ``cls`` by invoking all resolver helpers.
 
@@ -459,19 +534,56 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     would probe the same ancestors twice.
     """
     template_path, template_owner = _walk_template(cls)
+    inline_class = (
+        template_owner.__name__
+        if template_owner is not None and _has_inline_template(template_owner)
+        else None
+    )
+    if inline_class is not None and template_path.suffix == ".pjx":
+        assert template_owner is not None
+        raise TypeError(
+            f"{template_path}:{first_line(template_owner)}: "
+            f"{template_owner.__name__} assigns `template`, but a component "
+            f"class in a .pjx document cannot carry an inline template; give "
+            f"it its own file."
+        )
 
     # Imported here, not at module scope: props_header imports _OpenComponent
     # from this module, so a top-level import would close the cycle.
     from pyjinhx.props_header import template_has_props_header
 
+    try:
+        source = read_document(template_path, inline_class)
+    except OSError:
+        # The probe may hand over a path nobody has proven exists; loading
+        # the template reports that itself.
+        source = None
+
+    if source is not None and inline_class is None and "{#python" in source:
+        template_owner = _bind_block_document(
+            cls, template_path, template_owner, source
+        )
+
     # A classless class was *built from* its header, so its header is not
     # stale — only hand-written classes can be carrying a leftover one.
-    has_stale_def_header = not getattr(
-        cls, "_pjx_classless", False
-    ) and template_has_props_header(template_path)
+    has_stale_def_header = (
+        source is not None
+        and not getattr(cls, "_pjx_classless", False)
+        and template_has_props_header(source)
+    )
 
     css_path, css_owner = _walk_asset(cls, "css")
     js_path, js_owner = _walk_asset(cls, "js")
+    # Blocks come from the template this class renders, not from an MRO walk:
+    # a block lives inside that one document. Each follows its sibling file,
+    # so a component carrying both ships the file's rules first.
+    inline_css, inline_js = (
+        (None, None)
+        if source is None
+        else inline_assets(template_path, source, inline_class)
+    )
+    css_paths = tuple(path for path in (css_path, inline_css) if path is not None)
+    js_paths = tuple(path for path in (js_path, inline_js) if path is not None)
     provenance = {
         kind: owner
         for kind, owner in (
@@ -501,11 +613,12 @@ def _resolve_class_descriptor(cls: type[BaseModel]) -> ClassDescriptor:
     ), f"{cls.__name__}: children_field {children_field!r} is not a slot field"
     return ClassDescriptor(
         template_path=template_path,
+        inline_class=inline_class,
         slot_fields=slot_fields,
         json_coercible_fields=json_coercible_fields,
         children_field=children_field,
-        css_paths=() if css_path is None else (css_path,),
-        js_paths=() if js_path is None else (js_path,),
+        css_paths=css_paths,
+        js_paths=js_paths,
         strict=_resolve_strict(cls),
         provenance=provenance,
         has_stale_def_header=has_stale_def_header,
@@ -532,6 +645,24 @@ class BaseComponent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     auto_id: ClassVar[bool] = True
+
+    # Declared without a value: a value here would sit on the class, and a
+    # subclass declaring a *field* named ``template`` would then shadow it —
+    # pydantic warns about that and loses the field's default in subclasses.
+    template: ClassVar[str]
+    """The component's template, written in the class instead of a ``.pjx``.
+
+    One plain string literal, assigned in the class body. pyjinhx reads it
+    back from the module's source, so its line numbers in errors and
+    tracebacks are the lines of the ``.py`` file. Use a raw string
+    (``r\"\"\"…\"\"\"``) whenever the template holds a backslash: in a plain
+    string an escape such as ``\\n`` changes the markup *and* shifts every
+    reported line after it.
+
+    An edit to the string is picked up on the next render without a
+    re-import, but it is an edit to a ``.py`` file, so a dev server that
+    restarts on ``*.py`` changes restarts for it too.
+    """
 
     __pjx_descriptor__: ClassVar[ClassDescriptor]
 
@@ -741,3 +872,59 @@ Slot = Annotated[_SlotValue, PjxSlot()]
 # Tag-body routing: names the field that receives a PascalCase tag's nested
 # markup. Orthogonal to slot-ness.
 Children = Annotated[_SlotValue, PjxSlot(children=True)]
+
+
+def all_component_classes() -> list[type]:
+    """Every live BaseComponent subclass, nested ones included.
+
+    Pydantic keeps a reference to every class it built, so one from a refused
+    import or a reloaded module is still listed; `_is_live` leaves it out.
+    """
+    found: list[type] = []
+    seen: set[type] = set()
+    stack = list(BaseComponent.__subclasses__())
+    while stack:
+        cls = stack.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
+        if _is_live(cls):
+            found.append(cls)
+        stack.extend(cls.__subclasses__())
+    return found
+
+
+def _is_live(cls: type) -> bool:
+    """Whether ``cls`` still counts as registered.
+
+    Only a class from a ``.pjx`` document or built from a header can go stale,
+    as its file is imported or turned into a class again; every other class
+    is live.
+    """
+    # Built from a header, so no module statement ever bound it to a name: it
+    # lives while its tag does, until its file turns out to be a document.
+    if getattr(cls, "_pjx_classless", False):
+        from pyjinhx.discovery import get_class
+
+        template = getattr(
+            getattr(cls, "__pjx_descriptor__", None), "template_path", None
+        )
+        if template is not None and loaded_document(template) is not None:
+            return False
+        return get_class(_pascal_to_snake(cls.__name__)) is cls
+    module = sys.modules.get(cls.__module__)
+    file = getattr(module, "__file__", None)
+    if not cls.__dict__.get("_pjx_document") and not (file and file.endswith(".pjx")):
+        return True
+    if not file:
+        return False
+    # A block run by `python -m` is not vouched for by the import hook.
+    loaded = loaded_document(file)
+    if loaded is None or loaded[0] != cls.__module__:
+        return False
+    if "<locals>" in cls.__qualname__ or "[" in cls.__qualname__:
+        return True
+    bound: object = module
+    for part in cls.__qualname__.split("."):
+        bound = getattr(bound, part, None)
+    return bound is cls

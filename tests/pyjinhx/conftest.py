@@ -1,8 +1,16 @@
+import importlib
+import sys
+from collections.abc import Callable
+from pathlib import Path
+
 import pytest
 
+from pyjinhx import discovery
 from pyjinhx.reactive.load_cost import reset_load_cost_decisions
 from pyjinhx.render_cache import reset_render_cost_decisions
 from pyjinhx.session import RenderSession
+
+Write = Callable[[str, str], Path]
 
 
 @pytest.fixture
@@ -38,6 +46,19 @@ def load_cost_decisions():
 
 
 @pytest.fixture(autouse=True)
+def no_orphan_templates():
+    """Start every test with no orphan templates published.
+
+    Most registry fixtures reset only the mapping and template_dir, so an
+    orphan recorded by an earlier test's build would otherwise outlive the tree
+    it was walked from and answer a tag in an unrelated test.
+    """
+    discovery._registry.orphans = {}
+    yield
+    discovery._registry.orphans = {}
+
+
+@pytest.fixture(autouse=True)
 def cache_everything_by_default(monkeypatch: pytest.MonkeyPatch):
     """Disarm the too-cheap heuristic for tests that are not about it.
 
@@ -47,3 +68,23 @@ def cache_everything_by_default(monkeypatch: pytest.MonkeyPatch):
     floor drops to zero unless a test sets its own.
     """
     monkeypatch.setenv("PJX_RENDER_CACHE_MIN_US", "0")
+
+
+@pytest.fixture
+def write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Write files under ``tmp_path``, which is on ``sys.path``; modules the
+    test imported from there are forgotten afterwards."""
+    monkeypatch.syspath_prepend(str(tmp_path))
+    before = set(sys.modules)
+
+    def write_file(name: str, text: str) -> Path:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        importlib.invalidate_caches()
+        return path
+
+    write_file("pkg/__init__.py", "")
+    yield write_file
+    for name in set(sys.modules) - before:
+        del sys.modules[name]

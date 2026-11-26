@@ -1,0 +1,8 @@
+{% set h = "{#" %}
+<p>{{ "#}" }}</p>
+{#css
+.a { color: red; }
+#}
+{#python
+x = 1
+#}

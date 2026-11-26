@@ -345,3 +345,13 @@ def test_a_placeholder_class_renders_the_same_way(tmp_path):
     assert set(cls.model_fields) == {"id"}
     assert instance.model_extra == {"text": "OK"}
     assert output == "<span>OK</span>"
+
+
+def test_a_header_after_a_byte_order_mark_is_read(tmp_path):
+    (tmp_path / "card.pjx").write_bytes(
+        b"\xef\xbb\xbf{#def title: str #}\n<div>{{ title }}</div>"
+    )
+
+    cls = component("Card", template_dir=tmp_path)
+
+    assert "title" in cls.model_fields

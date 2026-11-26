@@ -1,0 +1,5 @@
+{#def text: str = "" #}
+<div class="note">
+  <p>{{ text }}</p>
+  {% if %}
+</div>

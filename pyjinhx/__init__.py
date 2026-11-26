@@ -11,6 +11,10 @@ import sys
 import types
 from typing import Any
 
+import pyjinhx.importer as _importer
+
+_importer.install()
+
 __all__ = [  # noqa: RUF022
     # components & rendering
     "BaseComponent",

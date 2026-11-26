@@ -1,0 +1,8 @@
+{#-def a: int #}
+{#- css
+.a { color: red; }
+#}
+{#-python
+x = 1
+#}
+<p></p>

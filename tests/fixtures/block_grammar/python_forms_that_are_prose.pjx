@@ -1,0 +1,8 @@
+{# python
+x = 1
+#}
+{#python x = 1 #}
+{#pythonic
+y = 2
+#}
+<p></p>

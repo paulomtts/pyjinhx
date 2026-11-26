@@ -1,0 +1,8 @@
+{#python
+from pyjinhx import BaseComponent
+
+
+class Card(BaseComponent):
+    title: str = ""
+#}
+<div>{{ title }}</div>

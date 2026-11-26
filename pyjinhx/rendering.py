@@ -14,6 +14,7 @@ from pydantic import TypeAdapter
 
 from pyjinhx._component import BaseComponent, _pascal_to_snake
 from pyjinhx.assets import emit_assets
+from pyjinhx.classless import component_for_tag
 from pyjinhx.discovery import get_class
 from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
 from pyjinhx.props_header import warn_stale_def_header
@@ -148,7 +149,9 @@ def _load_reactive_child(
 def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     """Resolve each ChildRef in ``level`` against the class registry, in place.
 
-    Tags no class claims stop being holes here and go back to being markup.
+    A tag no class claims may still name a header-only template, which the
+    classless factory turns into a class on first use. Tags left unclaimed
+    stop being holes here and go back to being markup.
     Tags that do resolve are built once, in document order — a reactive class
     through its cache-routed ``load()`` factory, a plain one through its
     constructor — and returned with their segment index so the recursive step
@@ -158,7 +161,7 @@ def _fill_children(level: RenderedLevel) -> list[tuple[int, BaseComponent]]:
     for index, segment in enumerate(level.segments):
         if not isinstance(segment, ChildRef):
             continue
-        cls = get_class(_pascal_to_snake(segment.tag))
+        cls = get_class(_pascal_to_snake(segment.tag)) or component_for_tag(segment.tag)
         if cls is None:
             level.segments[index] = _passthrough_markup(segment)
             continue
@@ -300,7 +303,10 @@ def render_level(
     if descriptor.has_stale_def_header:
         warn_stale_def_header(component.__class__)
 
-    prefix = f"{component.__class__.__name__} (template: {descriptor.template_path}): "
+    template_name = str(descriptor.template_path)
+    if descriptor.inline_class is not None:
+        template_name += f"::{descriptor.inline_class}"
+    prefix = f"{component.__class__.__name__} (template: {template_name}): "
 
     # Checked before anything else this level does, including a cache lookup: a
     # hit skips the template render entirely, so a guard left down in Phase 3
@@ -371,7 +377,7 @@ def render_level(
         # AbsolutePathLoader's uptodate() closure memoizes that answer in the
         # request-scoped freshness cache, so the repeat lookups a reactive pass
         # makes for one template cost a dict hit rather than a filesystem stat.
-        template = jinja_env.get_template(str(descriptor.template_path))
+        template = jinja_env.get_template(template_name)
     except jinja2.TemplateNotFound as err:
         raise jinja2.TemplateNotFound(
             err.name, message=f"{prefix}template file not found"

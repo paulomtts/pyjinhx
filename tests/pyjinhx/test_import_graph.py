@@ -23,14 +23,19 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "pyjinhx"
 # Add an entry here deliberately when a new edge is designed, never to make a
 # failing test go green.
 ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
-    "__init__": frozenset(),
+    # Installing the .pjx import hook is the one thing the package does on import.
+    "__init__": frozenset({"pyjinhx.importer"}),
     # The TYPE_CHECKING-only RenderSession import mirrors session's own
     # component/segments entries below, for the same reason: the enum/function
     # signature names the type, runtime never touches it.
     # component is a real runtime edge: all_assets() reads
     # BaseComponent.__subclasses__() and each class's descriptor, imported
     # locally to avoid a module-level cycle (session imports assets).
-    "assets": frozenset({"pyjinhx.session", "pyjinhx._component"}),
+    # template_blocks is read to refuse linking an inline block, which has no
+    # file for a URL to point at.
+    "assets": frozenset(
+        {"pyjinhx.session", "pyjinhx._component", "pyjinhx.template_blocks"}
+    ),
     # app_context is import-pure - stdlib only - so the reactive load() wrap can
     # import it at module scope without threading an edge back into the spine.
     "app_context": frozenset(),
@@ -428,8 +433,10 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx",
             "pyjinhx._component",
             "pyjinhx.discovery",
+            "pyjinhx.importer",
             "pyjinhx.props_header",
             "pyjinhx.segments",
+            "pyjinhx.sfc",
         }
     ),
     # The client tier is the bottom of the stack: it ships pjx.js and reads it
@@ -446,18 +453,23 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     "client.inject": frozenset(
         {"pyjinhx.assets", "pyjinhx.client", "pyjinhx.config", "pyjinhx.session"}
     ),
-    # descriptor/props_header are ordinary upward reads. render and session are
+    # descriptor/props_header/sfc/template_blocks are ordinary upward reads. render and session are
     # the reverse edges behind BaseComponent.render(): both are imported inside
     # the method body, never at module scope, because rendering.py imports
     # BaseComponent at import time and a module-level edge back would be a real
     # cycle — the same local-import escape hatch assets.py already uses.
+    # discovery is read inside _is_live only: discovery imports this module.
     "_component": frozenset(
         {
             "pyjinhx.client.inject",
             "pyjinhx.descriptor",
+            "pyjinhx.discovery",
+            "pyjinhx.importer",
             "pyjinhx.props_header",
             "pyjinhx.rendering",
             "pyjinhx.session",
+            "pyjinhx.sfc",
+            "pyjinhx.template_blocks",
         }
     ),
     # config sits above everything: it may read the spine to register
@@ -474,6 +486,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx",
             "pyjinhx._component",
             "pyjinhx.builtins",
+            "pyjinhx.classless",
             "pyjinhx.discovery",
             "pyjinhx.dev",
             "pyjinhx.integrations.base",
@@ -496,7 +509,7 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # discovery keys the registry by each class's own resolved tag, so it reads
     # _component.py's snake-case helper rather than inventing a second naming
     # scheme that could drift from the one templates are probed with.
-    "discovery": frozenset({"pyjinhx._component"}),
+    "discovery": frozenset({"pyjinhx._component", "pyjinhx.sfc"}),
     # The framework adapter sits at the very top with config: it orchestrates
     # the request cycle by calling published entry points (request_scope,
     # render, inject_runtime, compose) and nothing imports it back
@@ -524,16 +537,29 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.session",
         }
     ),
+    # importer is the .pjx import hook, installed by `import pyjinhx` itself, so
+    # it is stdlib plus sfc at module scope; the component base class is read
+    # inside the loader once a document's block has run, so _component is a
+    # function-local edge (test_importer_only_imports_component_inside_a_function).
+    "importer": frozenset({"pyjinhx.sfc", "pyjinhx._component"}),
     "markers": frozenset({"pyjinhx._component"}),
     # Generating a class from a {#def #} header needs the open-model base to
     # subclass; parsing also reaches in now, to resolve the Slot/Children
-    # marker aliases.
-    "props_header": frozenset({"pyjinhx._component"}),
+    # marker aliases, and the header is located with template_blocks.find_block.
+    "props_header": frozenset(
+        {"pyjinhx._component", "pyjinhx.sfc", "pyjinhx.template_blocks"}
+    ),
+    # Inline {#css#}/{#js#} block scanning reads template text only, so it
+    # stays below the spine; sfc is stdlib-only, so the edge stays low too.
+    "template_blocks": frozenset({"pyjinhx.sfc"}),
     # rendering resolves each ChildRef tag against the published class registry;
     # an unregistered tag is emitted verbatim, so this is a read-only edge.
+    # classless is the fallback for a tag miss: a header-only template gets its
+    # class on first use. classless never imports rendering, so no cycle.
     "rendering": frozenset(
         {
             "pyjinhx.assets",
+            "pyjinhx.classless",
             "pyjinhx._component",
             "pyjinhx.discovery",
             "pyjinhx.markers",
@@ -698,6 +724,24 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
         }
     ),
     "segments": frozenset(),
+    # sfc.py reads an inline template out of module source with ast alone;
+    # stdlib-only so the loader in session.py can call it from the bottom of
+    # the graph.
+    "sfc": frozenset(),
+    # stubgen parses `.pjx` blocks with sfc; it must never import the
+    # application whose components it describes.
+    "stubgen": frozenset({"pyjinhx.sfc"}),
+    # manifest reads documents and modules statically. template_blocks is
+    # imported inside scan_blocks, so a bare `import pyjinhx.manifest` stays
+    # stdlib-only; nothing here may import props_header or _component, which
+    # would pull in pydantic and the application's own classes.
+    "manifest": frozenset(
+        {
+            "pyjinhx.sfc",
+            "pyjinhx.stubgen",
+            "pyjinhx.template_blocks",
+        }
+    ),
     # The on_rendered hook's signature names BaseComponent and RenderedLevel, but
     # both imports are TYPE_CHECKING-only. At runtime session also imports
     # AssetMode from assets, a real edge alongside markers.
@@ -713,6 +757,9 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
             "pyjinhx.segments",
             "pyjinhx.assets",
             "pyjinhx.config",
+            "pyjinhx.importer",
+            "pyjinhx.sfc",
+            "pyjinhx.template_blocks",
         }
     ),
     # pjx_table family (#526): each component module imports only the core
@@ -835,6 +882,9 @@ def test_session_never_reaches_into_reactive():
         "pyjinhx.segments",
         "pyjinhx.assets",
         "pyjinhx.config",
+        "pyjinhx.importer",
+        "pyjinhx.sfc",
+        "pyjinhx.template_blocks",
     }
 
 
@@ -927,6 +977,14 @@ def test_component_only_imports_render_and_session_inside_a_method_body():
     module_level = module_level_internal_imports(PACKAGE_ROOT / "_component.py")
     assert "pyjinhx.rendering" not in module_level
     assert "pyjinhx.session" not in module_level
+
+
+def test_importer_only_imports_component_inside_a_function():
+    """`import pyjinhx` installs the import hook and must not start importing
+    pydantic, which _component.py pulls in; the loader reads BaseComponent only
+    after a document's block has run."""
+    module_level = module_level_internal_imports(PACKAGE_ROOT / "importer.py")
+    assert "pyjinhx._component" not in module_level
 
 
 def test_session_only_imports_config_inside_a_function_body():

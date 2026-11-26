@@ -19,3 +19,5 @@ ADRs are immutable: superseded by a new ADR, never edited. New decisions made du
 | [0011](./0011-process-decisions.md) | Process decisions (packaging, release, deferrals) |
 | [0012](./0012-fanout-follows-the-request.md) | Fan-out follows the request, not the return value |
 | [0013](./0013-absence-is-proved-by-a-failed-load.md) | Absence is proved by a failed load, not a registry miss (amends 0009 E1/E17) |
+| [0014](./0014-a-component-is-a-pjx-document.md) | A component is a pjx document, optionally owned by a class (implemented; published as `docs/decisions/0009`; supersedes 0008) |
+| [0015](./0015-a-pjx-document-may-carry-its-class.md) | A pjx document may carry its class in a `{#python#}` block (implemented; published, condensed, in `docs/decisions/0009`; amends 0014, reverses the rest of 0008) |

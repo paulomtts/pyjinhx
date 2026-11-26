@@ -1,0 +1,7 @@
+<div></div>
+{#css
+.a { color: red; }
+#}
+{#python
+x = 1
+#}

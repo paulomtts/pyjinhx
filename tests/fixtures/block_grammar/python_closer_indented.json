@@ -1,0 +1,7 @@
+{
+  "blocks": [],
+  "error": {
+    "code": "closer-not-at-line-start",
+    "line": 3
+  }
+}

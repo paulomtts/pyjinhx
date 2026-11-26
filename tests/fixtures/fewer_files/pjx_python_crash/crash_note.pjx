@@ -1,0 +1,12 @@
+{#python
+from pyjinhx import BaseComponent
+
+
+def limit() -> int:
+    raise RuntimeError("no limit set")
+
+
+class CrashNote(BaseComponent):
+    size: int = limit()
+#}
+<p>{{ size }}</p>

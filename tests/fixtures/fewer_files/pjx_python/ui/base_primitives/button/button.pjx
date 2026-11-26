@@ -1,0 +1,22 @@
+{#python
+from typing import Literal
+
+from pydantic import Field
+
+from pyjinhx import BaseComponent
+from pyjinhx._component import AttrValue, ExtraAttrs
+
+
+class Button(BaseComponent):
+    """A button that hands any htmx attributes it is given to the element."""
+
+    label: str
+    kind: Literal["primary", "ghost"] = "primary"
+    hx_post: AttrValue = ""
+    attrs: ExtraAttrs = Field(default_factory=dict)
+#}
+<button id="{{ id }}" type="button" class="btn btn--{{ kind }}"{% if hx_post %} hx-post="{{ hx_post }}"{% endif %}{% for name, value in attrs.items() %} {{ name }}="{{ value }}"{% endfor %}>{{ label }}</button>
+{#css
+.btn { padding: 0.25rem 0.75rem; }
+.btn--ghost { background: none; }
+#}

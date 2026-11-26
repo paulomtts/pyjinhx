@@ -958,6 +958,53 @@ class TestWalkTemplate:
         assert _walk_template(Card) == (Path(__file__).parent / "card.pjx", None)
 
 
+class TestWalkInlineTemplate:
+    """A class whose own body assigns ``template`` owns its template: the walk
+    answers with its module file before probing for a ``.pjx``.
+
+    Each test names its classes differently: an inline template is found in
+    the module source by class name, so two same-named classes with a
+    template in one file are refused."""
+
+    def test_an_inline_template_wins_over_an_adjacent_file(self, mro_dir):
+        class Tile(BaseComponent):
+            template = "<div>inline</div>"
+
+        Tile.__module__ = _MRO_MODULE
+        (mro_dir / "tile.pjx").write_text("<div>file</div>")
+
+        assert _walk_template(Tile) == (mro_dir / f"{_MRO_MODULE}.py", Tile)
+
+    def test_a_subclass_file_overrides_a_parents_inline_template(self, mro_dir):
+        class Panel(BaseComponent):
+            template = "<div>inline</div>"
+
+        class FancyPanel(Panel):
+            pass
+
+        Panel.__module__ = _MRO_MODULE
+        FancyPanel.__module__ = _MRO_MODULE
+        (mro_dir / "fancy_panel.pjx").write_text("<div>fancy</div>")
+
+        assert _walk_template(FancyPanel) == (mro_dir / "fancy_panel.pjx", FancyPanel)
+
+    def test_an_inline_owner_costs_no_probe(self, mro_dir, monkeypatch):
+        class Sheet(BaseComponent):
+            template = "<div>inline</div>"
+
+        class FancySheet(Sheet):
+            pass
+
+        Sheet.__module__ = _MRO_MODULE
+        FancySheet.__module__ = _MRO_MODULE
+        probed = TestTemplateWalkProbeBudget._count_is_file(monkeypatch)
+
+        _walk_template(Sheet)
+        _walk_template(FancySheet)
+
+        assert probed == [mro_dir / "fancy_sheet.pjx"]
+
+
 class TestTemplateWalkProbeBudget:
     """ADR 0007's probe budget survives the walk: at most one `is_file` per
     ancestor, and none at all for the final fallback."""

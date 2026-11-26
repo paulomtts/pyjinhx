@@ -1,0 +1,7 @@
+{#python
+x = 1
+#}
+<p></p>
+{#python
+y = 2
+#}

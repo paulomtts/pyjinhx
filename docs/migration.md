@@ -7,6 +7,65 @@
     those two versions, never as a description of how pyjinhx behaves today. The topmost
     section is the only one that describes current behaviour.
 
+## 1.16.x → next (fewer files)
+
+Nothing here is required: `.py` + `.pjx` (+ `.css` / `.js`) keeps working, and moving
+a component to another shape is per component and reversible. See
+[One model, four shapes](guide/components.md#one-model-four-shapes) for the shapes
+and [Folding existing components](guide/components.md#folding-existing-components)
+for `scripts/fold_components.py`, which does the mechanical moves.
+
+Six behaviours change for templates you already have:
+
+- **A headed orphan template now renders as a component.** A `.pjx` with a `{#def#}`
+  header and no class used to pass `<Tag/>` through as literal markup unless you
+  called `component("Tag")` first. It now builds on first use. Templates without a
+  header are unchanged. If two or more same-named headed templates exist in
+  different directories the tag raises `LookupError` naming them; rename all but
+  one. A headerless namesake does not count.
+- **Header types are no longer all `Any`.** `str | int`, `Literal[...]`, `list[str]`
+  and `dict[str, int]` now validate and coerce as written. A prop declared `str | int`
+  used to accept anything. `Slot` is also now a valid header type.
+- **The header may sit anywhere in the document**, not only first. A second
+  `{#def#}` raises `TemplateSyntaxError`.
+- **A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
+  blank line.** The line's break goes with the block, so a headed template that used
+  to render a leading `\n` before its markup now starts at the markup. Line numbers
+  in errors are unchanged. Compare output byte for byte (snapshot tests, `strip()`-less
+  assertions) and update any that expected the blank line.
+- **A `{#python` alone on a line makes the file a document.** Any `.pjx` with a
+  line that is only `{#python` in column 0 is now taken for
+  a [shape P](guide/components.md#shape-p-the-class-in-the-pjx) document: `setup()`
+  imports it and runs its block, and a `.py` component whose `.pjx` has one fails at
+  class creation, because the class is expected to live in the `.pjx`. An example
+  in a `<pre>` written this way fails `setup()` with "no component class is named for ..."; indent it
+  or wrap it in `{% raw %}`. A prose comment such as `{# python helpers #}`, a spaced `{# python`, an indented
+  `{#python`, or one in the middle of a line, stays a comment.
+- **`setup()` does not import plain `.py` subclasses of a document's class.** Something
+  must import them.
+- **`template` is a reserved class attribute.** A class body that assigns `template`
+  is now read as an inline template. A pydantic field named `template` keeps its
+  meaning and is not read as one.
+
+Moving a component between shapes:
+
+| From | To | How |
+|---|---|---|
+| sibling `.css` / `.js` | `{#css#}` / `{#js#}` block | `fold_components.py assets` |
+| class + `.pjx` | class with `template = r"""..."""` | `fold_components.py template` |
+| fields-only class + `.pjx` | `.pjx` with a `{#def#}` header | `fold_components.py declass`, then fix the imports it reports |
+| class + `.pjx` | `.pjx` with a `{#python` block holding the class (S to P) | `fold_components.py pyblock`, then add `import pyjinhx` to the root `__init__.py` and run `python -m pyjinhx.stubgen` |
+
+### Registries that walk modules
+
+`pkgutil.walk_packages`, `pkgutil.iter_modules` and `rglob("*.py")` do not see `.pjx`
+modules. A test or registry that discovers components that way misses shape P
+components; `setup(components_root=...)` imports them, and `component("Name")` finds
+them by tag.
+
+The reverse (a block back to a file, a string back to a `.pjx`) is a cut and paste;
+nothing else about the component changes.
+
 ## 1.1.x → 1.2.0
 
 1.2.0 moves response composition out of the render path and into one framework-free
@@ -277,38 +336,6 @@ pyjinhx 1.0 is a rebuild, not an increment. The component model, template syntax
 slots, reactivity, and every builtin are the same as 0.36 — a v0.x app ports without a
 redesign. What changed is a short list of behaviors that the rebuild deliberately did not
 carry over, each one below with what to do instead.
-
-### SFC `{# python #}` blocks removed (breaking)
-
-Single-file components — a `{# python #}` block at the top of a template declaring the
-component class inline — do not exist in v2 and are not deferred (ADR 0008). There is no
-compatibility shim and no flag to re-enable them.
-
-**Migration:** split the block into a normal Python class next to the template. Discovery
-pairs them by name, so nothing else changes.
-
-```html
-<!-- BEFORE (0.36): card.html -->
-{# python
-class Card(BaseComponent):
-    title: str
-#}
-<div class="card"><h2>{{ title }}</h2></div>
-```
-
-```python
-# AFTER (1.0): card.py
-from pyjinhx import BaseComponent
-
-
-class Card(BaseComponent):
-    title: str
-```
-
-```html
-<!-- AFTER (1.0): card.pjx -->
-<div class="card"><h2>{{ title }}</h2></div>
-```
 
 ### Public `Parser` / `Tag` API removed (breaking)
 
