@@ -18,26 +18,28 @@ import pytest
 
 from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.rendering.pipeline import render
-from tests.browser.builtins.pjx_roster_picker._swaps_helpers import (
-    CHIP,
+from tests.browser.builtins.pjx_roster_picker._harness import (
     CLOSED,
     OPEN,
-    _chip,
-    _close_by_blur,
-    _events,
-    _exclude,
     _has_focus,
     _hidden_rows,
     _hint_hidden,
     _input,
-    _items,
-    _open,
     _pick,
     _picker,
-    _record_events,
-    _serve,
     _settle,
     _state,
+)
+from tests.browser.builtins.pjx_roster_picker._swaps_helpers import (
+    CHIP,
+    _chip,
+    _close_by_blur,
+    _events,
+    _exclude,
+    _items,
+    _open,
+    _record_events,
+    _serve,
     _swap,
     _validity,
     _values,

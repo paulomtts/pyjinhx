@@ -4,23 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from tests.browser.builtins.pjx_roster_picker._pick_helpers import (
+from tests.browser.builtins.pjx_roster_picker._harness import (
     CLOSED,
     OPEN,
-    _chip_values,
     _has_focus,
     _hidden_rows,
     _hint_hidden,
     _input,
     _item,
-    _last_query,
-    _open,
     _pick,
     _picker,
-    _remove,
-    _serve,
     _settle,
     _state,
+)
+from tests.browser.builtins.pjx_roster_picker._pick_helpers import (
+    _chip_values,
+    _last_query,
+    _open,
+    _remove,
+    _serve,
     _wait_hidden_rows,
     _wait_last_query,
 )

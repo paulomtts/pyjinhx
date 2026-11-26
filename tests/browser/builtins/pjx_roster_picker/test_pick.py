@@ -16,25 +16,27 @@ from typing import TYPE_CHECKING
 
 from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.rendering.pipeline import render
-from tests.browser.builtins.pjx_roster_picker._pick_helpers import (
+from tests.browser.builtins.pjx_roster_picker._harness import (
     CLOSED,
     OPEN,
-    _changes,
-    _chip_inputs,
-    _chip_values,
     _has_focus,
     _hidden_rows,
     _hint_hidden,
     _input,
     _item,
-    _open,
     _pick,
     _picker,
+    _settle,
+    _state,
+)
+from tests.browser.builtins.pjx_roster_picker._pick_helpers import (
+    _changes,
+    _chip_inputs,
+    _chip_values,
+    _open,
     _record_changes,
     _remove,
     _serve,
-    _settle,
-    _state,
     _wait_hidden_rows,
     _wait_last_query,
 )
