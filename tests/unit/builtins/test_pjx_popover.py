@@ -1,12 +1,13 @@
 """PJXPopover renders the positioned root shell that anchors a trigger and its panel (port of v0.x pyjinhx/builtins/ui/pjx_popover/pjx_popover.py)."""
 
 import dataclasses
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_popover import PJXPopover
-from pyjinhx.components.base import BaseComponent, Slot
+from pyjinhx.components.base import BaseComponent, Slot, _resolve_asset_paths
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 
@@ -104,3 +105,28 @@ def test_assets_are_discovered_from_the_component_directory():
     descriptor = PJXPopover.__pjx_descriptor__
     assert any(p.name == "pjx_popover.js" for p in descriptor.js_paths)
     assert any(p.name == "pjx_popover.css" for p in descriptor.css_paths)
+
+
+# PJXPopover ships one JS file, and that file carries the position primitive verbatim.
+#
+# The asset walk resolves exactly one script per class by stem, so the shared
+# pjx_popover_position.js cannot ride along on its own; pjx_popover.js embeds a
+# byte-identical copy and this test is what keeps the two from drifting.
+
+
+ASSETS = Path(__file__).resolve().parents[3] / "pyjinhx" / "builtins" / "pjx_popover"
+CONTROLLER = ASSETS / "pjx_popover.js"
+PRIMITIVE = ASSETS / "pjx_popover_position.js"
+
+
+def test_controller_embeds_the_primitive_verbatim():
+    assert PRIMITIVE.read_text() in CONTROLLER.read_text()
+
+
+def test_controller_calls_the_primitive():
+    assert "pjx.popoverPosition(" in CONTROLLER.read_text()
+
+
+def test_popover_still_resolves_exactly_one_script():
+    _css, js = _resolve_asset_paths(PJXPopover)
+    assert js == (CONTROLLER,)
