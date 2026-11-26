@@ -17,17 +17,17 @@ from typing import Annotated
 
 import pytest
 
-from pyjinhx import discovery, rendering
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.assets import asset_token
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_snake
 from pyjinhx.config import configure_pyjinhx, current_settings
-from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.backend import InMemoryCacheBackend
 from pyjinhx.reactive.backend_health import reset_backend_health
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent, _string_cache_key
-from pyjinhx.render_cache import render_cache_key
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx.rendering import pipeline
+from pyjinhx.rendering.assets import asset_token
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.render_cache import render_cache_key
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 
 
 class SpyBackend(InMemoryCacheBackend):
@@ -352,7 +352,7 @@ def test_reactive_component_never_uses_render_cache(
     template.write_text("<div>{{ label }}</div>", encoding="utf-8")
     _attach(_CachedRow, template)
 
-    real_render_cache_key = rendering.render_cache_key
+    real_render_cache_key = pipeline.render_cache_key
 
     def guarded(component: BaseComponent) -> str:
         if isinstance(component, ReactiveComponent):
@@ -361,7 +361,7 @@ def test_reactive_component_never_uses_render_cache(
             )
         return real_render_cache_key(component)
 
-    monkeypatch.setattr(rendering, "render_cache_key", guarded)
+    monkeypatch.setattr(pipeline, "render_cache_key", guarded)
 
     with request_scope():
         first = render(_CachedRow(id="r", row_id=7), RenderSession())

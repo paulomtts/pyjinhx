@@ -4,11 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_snake
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 

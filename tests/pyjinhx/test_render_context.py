@@ -7,10 +7,18 @@ import pytest
 from jinja2 import Environment
 from pydantic import BaseModel, ValidationError
 
-from pyjinhx._component import BaseComponent, Slot, _resolve_slot_fields
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.markers import ComponentNode, collect_slot_tokens, finalize_slot_node
-from pyjinhx.render_context import build_context
+from pyjinhx.components.base import (
+    BaseComponent,
+    ClassDescriptor,
+    Slot,
+    _resolve_slot_fields,
+)
+from pyjinhx.rendering.template_context import (
+    ComponentNode,
+    build_context,
+    collect_slot_tokens,
+    finalize_slot_node,
+)
 
 
 def test_component_node_marker_identity():
@@ -480,7 +488,10 @@ def test_component_node_truthiness_does_not_use_len():
 
 
 def test_finalize_passes_non_component_values_through_unchanged():
-    from pyjinhx.markers import collect_slot_tokens, finalize_slot_node
+    from pyjinhx.rendering.template_context import (
+        collect_slot_tokens,
+        finalize_slot_node,
+    )
 
     with collect_slot_tokens():
         assert finalize_slot_node("plain") == "plain"
@@ -489,7 +500,11 @@ def test_finalize_passes_non_component_values_through_unchanged():
 
 
 def test_finalize_registers_a_component_node_under_a_unique_token():
-    from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens, finalize_slot_node
+    from pyjinhx.rendering.template_context import (
+        SLOT_TOKEN_RE,
+        collect_slot_tokens,
+        finalize_slot_node,
+    )
 
     class Dummy(BaseComponent):
         pass
@@ -507,7 +522,10 @@ def test_finalize_registers_a_component_node_under_a_unique_token():
 
 
 def test_token_tables_do_not_leak_between_scopes():
-    from pyjinhx.markers import collect_slot_tokens, finalize_slot_node
+    from pyjinhx.rendering.template_context import (
+        collect_slot_tokens,
+        finalize_slot_node,
+    )
 
     class Dummy(BaseComponent):
         pass
@@ -525,7 +543,10 @@ def test_token_is_autoescape_inert():
     """The token must survive Markup escaping byte-for-byte."""
     from markupsafe import escape
 
-    from pyjinhx.markers import collect_slot_tokens, finalize_slot_node
+    from pyjinhx.rendering.template_context import (
+        collect_slot_tokens,
+        finalize_slot_node,
+    )
 
     class Dummy(BaseComponent):
         pass

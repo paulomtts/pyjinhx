@@ -22,7 +22,7 @@ import os
 import time
 
 from pyjinhx.reactive.cache import cache_put, invalidate
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 ENTRY_COUNTS = (500, 1000, 2000, 4000, 8000)
 

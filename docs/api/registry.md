@@ -1,9 +1,9 @@
 # Registry
 
-The **instance registry** (`pyjinhx.registry` + `pyjinhx.session`) maps a composite key to a request-scoped component instance or rendered level. It is not wrapped in a class — it is a set of free functions over per-request state.
+The **instance registry** (`pyjinhx.rendering.registry` + `pyjinhx.rendering.session`) maps a composite key to a request-scoped component instance or rendered level. It is not wrapped in a class — it is a set of free functions over per-request state.
 
 !!! warning "Internal modules"
-    Neither `pyjinhx.registry` nor `pyjinhx.session` is exported from `pyjinhx`, and their
+    Neither `pyjinhx.rendering.registry` nor `pyjinhx.rendering.session` is exported from `pyjinhx`, and their
     paths may change. Under `setup(app)` the registry fills itself as components render;
     you only reach for these functions when you are wiring a framework by hand.
 
@@ -11,7 +11,7 @@ Not to be confused with the process-wide tag -> class registry, which is interna
 
 See the [Component Registry guide](../guide/registry.md) for conceptual documentation and usage patterns.
 
-## Instance registry (`pyjinhx.registry` + `pyjinhx.session`)
+## Instance registry (`pyjinhx.rendering.registry` + `pyjinhx.rendering.session`)
 
 Request-scoped: entries live only for the duration of a `request_scope()` block and are keyed by a composite of component type name and instance id, so different component types can share the same `id` without collision.
 
@@ -39,7 +39,7 @@ def register_instance(type_name: str, instance_id: str, entry: object) -> None
 
 Store an entry in this request's registry under its composite key. The only function that mutates the registry. A call outside `request_scope()` is dropped with a logged warning rather than silently vanishing.
 
-Writing a key that already holds an entry in the same request logs a warning and overwrites (last write wins). With reactive-dev strict mode on (`pyjinhx.dev.enable_reactive_dev(strict=True)` — there is no `PjxSettings` field or `PJX_*` env var that reaches strict mode yet, only this direct call) the same collision raises `pyjinhx.registry.InstanceKeyCollisionError` instead, leaving the existing entry intact — it almost always means two instances of one component class share a hard-coded `id`.
+Writing a key that already holds an entry in the same request logs a warning and overwrites (last write wins). With reactive-dev strict mode on (`pyjinhx.dev.enable_reactive_dev(strict=True)` — there is no `PjxSettings` field or `PJX_*` env var that reaches strict mode yet, only this direct call) the same collision raises `pyjinhx.rendering.registry.InstanceKeyCollisionError` instead, leaving the existing entry intact — it almost always means two instances of one component class share a hard-coded `id`.
 
 ### request_scope()
 
@@ -47,14 +47,14 @@ Writing a key that already holds an entry in the same request logs a warning and
 def request_scope(session: RenderSession | None = None, *, load_context: object | None = None) -> Iterator[RenderSession]
 ```
 
-Context manager (`pyjinhx.session.request_scope`) that binds fresh per-request state for the duration of the block: the instance registry, dirtied-key tracking, the load cache and its reverse index, and (when given) the app's `context_factory` result readable via `get_load_context()`.
+Context manager (`pyjinhx.rendering.session.request_scope`) that binds fresh per-request state for the duration of the block: the instance registry, dirtied-key tracking, the load cache and its reverse index, and (when given) the app's `context_factory` result readable via `get_load_context()`.
 
 `session` lets a caller wire hooks (e.g. `on_rendered`) onto an existing `RenderSession` before it becomes the one `current_session()` sees as active; when omitted, a fresh `RenderSession()` is constructed.
 
 **Usage:**
 
 ```python
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.session import request_scope
 
 with request_scope(load_context=my_app_context) as session:
     # Instances registered here are isolated to this scope

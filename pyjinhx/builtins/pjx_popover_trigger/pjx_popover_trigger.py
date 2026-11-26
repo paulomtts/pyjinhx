@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 class PJXPopoverTrigger(BaseComponent):

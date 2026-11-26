@@ -5,13 +5,14 @@ from typing import Annotated
 
 import pytest
 
-from pyjinhx import discovery, registry
+from pyjinhx.components import discovery
+from pyjinhx.integrations.responses import PjxResponse, compose
 from pyjinhx.reactive import cache
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
-from pyjinhx.responses import PjxResponse, compose
-from pyjinhx.session import RenderSession, add_dirtied, request_scope
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.session import RenderSession, add_dirtied, request_scope
 
 LOAD_CALLS: list[str | None] = []
 

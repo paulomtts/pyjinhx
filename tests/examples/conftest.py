@@ -8,8 +8,8 @@ import pytest
 
 from examples.todo import store as todo_store
 from examples.todo.context import TodoAppContext
-from pyjinhx.assets import AssetMode
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx.rendering.assets import AssetMode
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 
 
 @pytest.fixture(autouse=True)

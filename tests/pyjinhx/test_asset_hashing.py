@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx.assets import asset_manifest, hashed_filename, resolver_with_hash
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import asset_manifest, hashed_filename, resolver_with_hash
+from pyjinhx.rendering.session import RenderSession
 
 HEX8 = re.compile(r"^button\.[0-9a-f]{8}\.js$")
 

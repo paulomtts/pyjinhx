@@ -10,8 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from pyjinhx._component import BaseComponent, Children, Slot
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components.base import BaseComponent, Children, ClassDescriptor, Slot
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -112,7 +111,7 @@ class TestPjxProps:
 
 class TestSlotPropsView:
     def node(self, component: BaseComponent):
-        from pyjinhx.markers import ComponentNode
+        from pyjinhx.rendering.template_context import ComponentNode
 
         return ComponentNode(
             component,
@@ -186,7 +185,7 @@ class TestSlotPropsView:
         assert "SlotProps" in repr(props)
 
     def test_a_component_valued_prop_comes_back_wrapped(self):
-        from pyjinhx.markers import ComponentNode
+        from pyjinhx.rendering.template_context import ComponentNode
 
         class Card(BaseComponent):
             content: Slot = ""
@@ -199,7 +198,7 @@ class TestSlotPropsView:
         assert nested.component is leaf
 
     def test_a_component_valued_prop_is_wrapped_through_subscript_too(self):
-        from pyjinhx.markers import ComponentNode
+        from pyjinhx.rendering.template_context import ComponentNode
 
         class Card(BaseComponent):
             content: Slot = ""
@@ -261,7 +260,7 @@ class TestSlotPropsView:
 
 class TestPropsThroughJinja:
     def session(self):
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.session import RenderSession
 
         return RenderSession()
 
@@ -273,7 +272,7 @@ class TestPropsThroughJinja:
         return Card
 
     def test_a_props_field_renders_its_validated_value(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_props.html")
 
@@ -284,7 +283,7 @@ class TestPropsThroughJinja:
     def test_a_props_value_is_escaped_like_ordinary_text(self):
         # `.props` hands back a plain str, so autoescape applies: only the
         # bare `{{ field }}` path is exempt from escaping.
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_props.html")
 
@@ -293,7 +292,7 @@ class TestPropsThroughJinja:
         assert output == '<div class="box">&lt;b&gt;x&lt;/b&gt;</div>'
 
     def test_reading_props_does_not_render_the_child(self):
-        import pyjinhx.rendering as render_module
+        import pyjinhx.rendering.pipeline as render_module
 
         Card = self.card_class("slot_props.html")
         seen: list[str] = []
@@ -314,7 +313,7 @@ class TestPropsThroughJinja:
         assert seen == ["Card"]
 
     def test_reading_props_produces_no_slot_token(self):
-        from pyjinhx.rendering import render_level
+        from pyjinhx.rendering.pipeline import render_level
 
         Card = self.card_class("slot_props.html")
 
@@ -324,8 +323,8 @@ class TestPropsThroughJinja:
         assert "pjx-slot-" not in text
 
     def test_reading_props_creates_no_nested_rendered_level(self):
-        from pyjinhx.rendering import render_level
-        from pyjinhx.segments import RenderedLevel
+        from pyjinhx.rendering.pipeline import render_level
+        from pyjinhx.rendering.segments import RenderedLevel
 
         Card = self.card_class("slot_props.html")
 
@@ -334,7 +333,7 @@ class TestPropsThroughJinja:
         assert [s for s in level.segments if isinstance(s, RenderedLevel)] == []
 
     def test_interpolating_the_view_itself_raises_the_opacity_error(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_props_bare_view.html")
 
@@ -346,7 +345,7 @@ class TestPropsThroughJinja:
 
 class TestPropsRegressions:
     def session(self):
-        from pyjinhx.session import RenderSession
+        from pyjinhx.rendering.session import RenderSession
 
         return RenderSession()
 
@@ -358,7 +357,7 @@ class TestPropsRegressions:
         return Card
 
     def test_bare_interpolation_still_splices_the_child(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_interp.html")
 
@@ -369,21 +368,21 @@ class TestPropsRegressions:
         )
 
     def test_truthiness_still_takes_the_present_branch(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_if.html")
 
         assert render(Card(content=Leaf(title="a")), self.session()) == "<div>HAS</div>"
 
     def test_truthiness_still_takes_the_absent_branch(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_if.html")
 
         assert render(Card(content=""), self.session()) == "<div>NONE</div>"
 
     def test_props_works_on_a_list_wrapped_entry(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_props_list.html")
 
@@ -394,7 +393,7 @@ class TestPropsRegressions:
         assert output == '<div class="list"><i>a</i><i>b</i></div>'
 
     def test_props_works_on_a_dict_wrapped_entry(self):
-        from pyjinhx.rendering import render
+        from pyjinhx.rendering.pipeline import render
 
         Card = self.card_class("slot_props_dict.html")
 
@@ -405,8 +404,7 @@ class TestPropsRegressions:
     def test_wrapping_still_happens_in_build_context_unchanged(self):
         # `.props` reads the component reference the node already carries, so
         # the wrapping layer needed no change; this pins that.
-        from pyjinhx.markers import ComponentNode
-        from pyjinhx.render_context import build_context
+        from pyjinhx.rendering.template_context import ComponentNode, build_context
 
         Card = self.card_class("slot_props.html")
         leaf = Leaf(title="hello")
@@ -418,8 +416,7 @@ class TestPropsRegressions:
         assert context["content"].props.title == "hello"
 
     def test_a_nested_component_valued_prop_is_opaque_not_raw(self):
-        from pyjinhx.markers import ComponentNode
-        from pyjinhx.render_context import build_context
+        from pyjinhx.rendering.template_context import ComponentNode, build_context
 
         class Wrap(BaseComponent):
             inner: Children = ""
@@ -473,7 +470,7 @@ class TestStringSlotThroughProps:
         assert value == "<b>hi</b>"
 
     def test_props_reads_the_string_slot_unescaped_through_a_node(self):
-        from pyjinhx.render_context import build_context
+        from pyjinhx.rendering.template_context import build_context
 
         class Inner(BaseComponent):
             body: Slot = ""

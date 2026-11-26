@@ -13,17 +13,17 @@ from typing import Annotated
 import pytest
 from pydantic import Field
 
-from pyjinhx import discovery
-from pyjinhx._component import (
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
     BaseComponent,
+    ClassDescriptor,
     _pascal_to_snake,
     _resolve_json_coercible_fields,
 )
-from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.rendering import render, render_level
-from pyjinhx.segments import serialize
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.rendering.pipeline import render, render_level
+from pyjinhx.rendering.segments import serialize
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 _TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
 

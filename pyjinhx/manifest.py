@@ -16,7 +16,7 @@ Conventions of the JSON:
   of its name or of what is wrong.
 - ``annotation`` and ``default`` are source text as written.
 - ``class.module`` is the module name Python would import the file under, as
-  `sfc.module_name_for` derives it, or null when there is none. With no
+  `scanner.module_name_for` derives it, or null when there is none. With no
   ``--sys-path`` it is the path below the top of the package chain (the
   highest directory holding an ``__init__.py``); with some, a file outside
   that chain is named by the path below the deepest entry that contains it.
@@ -52,7 +52,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from pyjinhx.sfc import (
+from pyjinhx.document.scanner import (
     BLOCK_KEYWORDS,
     HEADER_PREFIX,
     LITERAL_ERRORS,
@@ -128,7 +128,7 @@ def scan_blocks(
     """
     # Local: template_blocks imports jinja2, which a bare `import pyjinhx.manifest`
     # does not need.
-    from pyjinhx.template_blocks import (
+    from pyjinhx.document.template_blocks import (
         BlockTemplateSyntaxError,
         find_block,
         inline_assets,
@@ -381,7 +381,7 @@ class _Header(NamedTuple):
 
 def _header(source: str) -> _Header | None:
     """The ``{#def#}`` header of ``source``, in either spelling."""
-    from pyjinhx.template_blocks import BlockTemplateSyntaxError, find_header
+    from pyjinhx.document.template_blocks import BlockTemplateSyntaxError, find_header
 
     try:
         found = find_header(source, "")

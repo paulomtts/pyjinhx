@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 
 import pyjinhx
-from pyjinhx.assets import AssetMode, emit_assets
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import PJX_MOUNTED_HEADER, inject_runtime
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import AssetMode, emit_assets
+from pyjinhx.rendering.session import RenderSession
 
 THEME_TAG = f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
 

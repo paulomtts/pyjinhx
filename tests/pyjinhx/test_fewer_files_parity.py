@@ -32,12 +32,14 @@ import pytest
 from pydantic import ValidationError
 
 import tests.fixtures.fewer_files
-from pyjinhx import BaseComponent, Slot, classless, discovery, manifest, sfc, stubgen
-from pyjinhx.assets import AssetMode
+from pyjinhx import BaseComponent, Slot, manifest, stubgen
+from pyjinhx.components import classless, discovery
+from pyjinhx.document import scanner
+from pyjinhx.integrations.responses import PjxResponse, compose
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
-from pyjinhx.rendering import render
-from pyjinhx.responses import PjxResponse, compose
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx.rendering.assets import AssetMode
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 from tests.fixtures.fewer_files import domain
 
 FIXTURES = Path(tests.fixtures.fewer_files.__file__).parent
@@ -87,7 +89,7 @@ def module_paths(root: Path) -> list[Path]:
     documents = [
         p
         for p in root.rglob("*.pjx")
-        if sfc.python_block(p.read_text(encoding="utf-8"), str(p))
+        if scanner.python_block(p.read_text(encoding="utf-8"), str(p))
     ]
     modules = [p for p in root.rglob("*.py") if p.name != "__init__.py"]
     return sorted([*modules, *documents])
@@ -472,7 +474,7 @@ MODULE_PREFIX = "tests.fixtures.fewer_files.pjx_python"
 REGISTER = """
 import sys
 import pyjinhx
-from pyjinhx import discovery
+from pyjinhx.components import discovery
 
 assert not [m for m in sys.modules if m.startswith("tests.fixtures")]
 pyjinhx.setup(components_root=sys.argv[1])

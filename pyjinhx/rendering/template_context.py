@@ -1,4 +1,7 @@
-"""The Jinja context a component's template renders with, and the opaque slot nodes inside it."""
+"""The Jinja context a component's template renders with.
+
+Also holds the opaque slot nodes inside it.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ from typing import Any
 
 from markupsafe import Markup
 
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent
 
 
 class SlotProps:

@@ -10,22 +10,22 @@ from typing import TYPE_CHECKING, Any
 
 from jinja2 import BaseLoader, Environment, TemplateNotFound
 
-from pyjinhx.assets import AssetMode
-from pyjinhx.importer import block_changed
-from pyjinhx.markers import finalize_slot_node
-from pyjinhx.sfc import read_document
-from pyjinhx.template_blocks import hide_block_lines
+from pyjinhx.components.importer import block_changed
+from pyjinhx.document.scanner import read_document
+from pyjinhx.document.template_blocks import hide_block_lines
+from pyjinhx.rendering.assets import AssetMode
+from pyjinhx.rendering.template_context import finalize_slot_node
 
 if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
     # them at runtime would point session at its own consumers.
-    from pyjinhx._component import BaseComponent
+    from pyjinhx.components.base import BaseComponent
 
     # Type-only for the same reason config is imported inside request_scope()'s
     # body and nowhere else: config sits above the render spine, so a runtime
     # module-scope edge back would be a genuine cycle.
     from pyjinhx.config import PjxSettings
-    from pyjinhx.segments import RenderedLevel
+    from pyjinhx.rendering.segments import RenderedLevel
 
 # The ten pieces of per-request mutable state. They live here rather than
 # beside their eventual consumers because the import rule runs one way only:
@@ -502,7 +502,7 @@ def request_scope(
     if session is None:
         # Function-local by necessity: config sits above the render spine and
         # imports it at import time, so a module-scope edge back would be a
-        # real cycle. Same escape hatch _component.py uses for rendering.py.
+        # real cycle. Same escape hatch base.py uses for pipeline.py.
         # Only the branch that builds the session consults the settings: a
         # caller that supplied one already chose its environment.
         from pyjinhx.config import current_settings

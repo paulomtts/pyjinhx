@@ -2,7 +2,7 @@
 
 Every symbol exported from `pyjinhx` (`__all__`) is listed below with a one-line description and a link to detailed documentation.
 
-These 17 symbols are the entire top-level public API. Everything else — `pyjinhx.session`, `pyjinhx.assets`, `pyjinhx.client`, `pyjinhx.dev`, `pyjinhx._component`, `pyjinhx.reactive.*` — is **internal**: importable, documented where it is genuinely useful, but outside `__all__` and free to change. If a page shows you one of those imports, it is telling you there is no public spelling yet.
+These 17 symbols are the entire top-level public API. Everything else — `pyjinhx.rendering.session`, `pyjinhx.rendering.assets`, `pyjinhx.client`, `pyjinhx.dev`, `pyjinhx.components.base`, `pyjinhx.reactive.*` — is **internal**: importable, documented where it is genuinely useful, but outside `__all__` and free to change. If a page shows you one of those imports, it is telling you there is no public spelling yet.
 
 The one other supported import path is the builtin UI kit, which has its own short public path:
 

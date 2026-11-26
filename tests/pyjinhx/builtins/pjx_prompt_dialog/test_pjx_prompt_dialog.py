@@ -5,8 +5,8 @@ from pydantic import ValidationError
 
 from pyjinhx import builtins
 from pyjinhx.builtins.pjx_prompt_dialog import PJXPromptDialog
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 EXPECTED_DEFAULT = (
     '<dialog id="pd" class="pjx-prompt-dialog" data-pjx-dialog="prompt" aria-modal="true" aria-labelledby="pd-label">\n'

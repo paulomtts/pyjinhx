@@ -5,8 +5,8 @@ from pydantic import ValidationError
 
 from pyjinhx import builtins
 from pyjinhx.builtins.pjx_confirm_dialog import PJXConfirmDialog
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 EXPECTED_DEFAULT = (
     '<dialog id="cd" class="pjx-confirm-dialog" data-pjx-dialog="confirm" aria-modal="true" aria-labelledby="cd-message">\n'

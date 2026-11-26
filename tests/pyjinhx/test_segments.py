@@ -4,8 +4,8 @@ import inspect
 
 import pytest
 
-import pyjinhx.segments
-from pyjinhx.segments import (
+import pyjinhx.rendering.segments
+from pyjinhx.rendering.segments import (
     RE_PASCAL_CASE_TAG_NAME,
     ChildRef,
     RenderedLevel,
@@ -121,7 +121,7 @@ class TestChildRef:
 
 
 def test_segments_module_is_import_pure():
-    tree = ast.parse(inspect.getsource(pyjinhx.segments))
+    tree = ast.parse(inspect.getsource(pyjinhx.rendering.segments))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]
@@ -872,7 +872,7 @@ class TestEnforceSingleRoot:
 
     def test_enforcement_path_never_swallows(self):
         # Invariant 3 / ADR 0002: single-root violations raise unconditionally.
-        source = inspect.getsource(pyjinhx.segments)
+        source = inspect.getsource(pyjinhx.rendering.segments)
         assert "except" not in source
 
 

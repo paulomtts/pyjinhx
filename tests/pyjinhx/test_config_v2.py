@@ -374,7 +374,7 @@ def test_static_root_is_stored_on_the_settings(tmp_path: Path):
 @pytest.fixture(autouse=True)
 def _reset_discovery_registry():
     """Each test starts from an empty published registry and leaves one behind."""
-    from pyjinhx import discovery
+    from pyjinhx.components import discovery
 
     discovery._registry.mapping = {}
     discovery._registry.template_dir = None
@@ -385,7 +385,7 @@ def _reset_discovery_registry():
 
 def test_setup_registers_builtins_with_a_components_root(tmp_path):
     import pyjinhx.builtins  # noqa: F401
-    from pyjinhx import discovery
+    from pyjinhx.components import discovery
     from pyjinhx.config import setup
 
     (tmp_path / "user_page.pjx").write_text("<div>user</div>")
@@ -398,7 +398,7 @@ def test_setup_registers_builtins_with_a_components_root(tmp_path):
 
 def test_setup_registers_builtins_without_a_components_root():
     import pyjinhx.builtins  # noqa: F401
-    from pyjinhx import discovery
+    from pyjinhx.components import discovery
     from pyjinhx.config import setup
 
     setup(app=None, components_root=None)
@@ -534,7 +534,7 @@ def test_setup_registers_a_builtin_tag_when_pyjinhx_builtins_was_never_imported(
             sys.executable,
             "-c",
             (
-                "from pyjinhx import discovery\n"
+                "from pyjinhx.components import discovery\n"
                 "from pyjinhx.config import setup\n"
                 "setup(app=None, components_root=None)\n"
                 "assert discovery.get_class('pjx_button') is not None, "

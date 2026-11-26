@@ -4,11 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import _fill_children, _passthrough_markup
-from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import _fill_children, _passthrough_markup
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -111,8 +110,8 @@ def test_unknown_tag_raises_nothing():
 
 
 def test_render_level_passes_unknown_tags_through():
-    from pyjinhx.rendering import render, render_level
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.pipeline import render, render_level
+    from pyjinhx.rendering.session import RenderSession
 
     class UnknownHost(BaseComponent):
         pass

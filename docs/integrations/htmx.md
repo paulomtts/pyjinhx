@@ -386,7 +386,7 @@ translation is always on. See [Response composition](../api/responses.md).
 ### The `HX-Reswap: none` mechanism
 
 The automatic `HX-Reswap: none` behavior described above is implemented in
-`pyjinhx/responses.py`: `compose()` emits it whenever the composed body has no
+`pyjinhx/integrations/responses.py`: `compose()` emits it whenever the composed body has no
 primary markup. There's no pluggable backend hook for this — it's a fixed
 property of composition, so every backend agrees about it. Framework glue
 (mounting static files, request scoping, adapting a pjx return into a native

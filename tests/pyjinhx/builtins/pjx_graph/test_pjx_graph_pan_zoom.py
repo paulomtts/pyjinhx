@@ -20,7 +20,7 @@ from markupsafe import Markup
 from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
 from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.rendering import render
+from pyjinhx.rendering.pipeline import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page

@@ -5,13 +5,13 @@ import dataclasses
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_drawer import PJXDrawer
 from pyjinhx.builtins.pjx_drawer_body import PJXDrawerBody
 from pyjinhx.builtins.pjx_drawer_footer import PJXDrawerFooter
 from pyjinhx.builtins.pjx_drawer_header import PJXDrawerHeader
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, Slot
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

@@ -4,10 +4,10 @@ import dataclasses
 
 import pytest
 
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, Slot
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

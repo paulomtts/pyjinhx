@@ -5,10 +5,10 @@ import logging
 import pytest
 
 from pyjinhx import dev
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.cache import cache_put
 from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.session import add_dirtied, request_scope
+from pyjinhx.rendering.session import add_dirtied, request_scope
 
 
 class PlainWidget(BaseComponent):

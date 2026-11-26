@@ -3,7 +3,7 @@
 bench_render_scaling_v2.py sweeps component *count* with tiny per-component
 payloads, and bench_render_depth.py sweeps nesting depth at breadth 1. Neither
 moves the number of *bytes* flowing through a level, so two size-driven costs
-are invisible in both: VerbatimParser.feed (pyjinhx/segments.py), which scans
+are invisible in both: VerbatimParser.feed (pyjinhx/rendering/segments.py), which scans
 every character of a level's rendered markup and rebuilds a line-start index
 over it, and _splice_slot_nodes (pyjinhx/render.py), which walks each string
 segment looking for slot placeholder tokens. This script pins the component
@@ -39,11 +39,16 @@ import tempfile
 import time
 from pathlib import Path
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
+    BaseComponent,
+    Children,
+    ClassDescriptor,
+    Slot,
+    _pascal_to_snake,
+)
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 FIXED_COMPONENTS = 50
 PAYLOAD_BYTES = (64, 256, 1024, 4096, 16384, 65536)
@@ -118,7 +123,7 @@ def build_slot_arm(
     """Root whose slot field holds a *list of leaf component instances*.
 
     Only a component-valued slot ever reaches _splice_slot_nodes: the finalize
-    hook (pyjinhx/markers.py:finalize_slot_node) swaps in a placeholder token
+    hook (pyjinhx/rendering/template_context.py:finalize_slot_node) swaps in a placeholder token
     only for a ComponentNode, and build_context._wrap_slot_value only wraps a
     Slot-typed field's value when it is actually a BaseComponent (or a
     list/dict of them) — never a plain str. A payload authored as markup

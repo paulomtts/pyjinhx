@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

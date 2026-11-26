@@ -4,7 +4,7 @@ Helpers for asset delivery, manifests, and cache-busted URLs.
 
 !!! warning "Internal module"
     Apart from `AssetMode` (exported from `pyjinhx`), everything on this page lives in
-    `pyjinhx.assets` and is **not** part of the public API — it is absent from
+    `pyjinhx.rendering.assets` and is **not** part of the public API — it is absent from
     `pyjinhx.__all__` and its module path may change. It is documented because build-time
     asset enumeration has no public spelling today.
 
@@ -55,7 +55,7 @@ def asset_manifest(
 Return the resolved URLs of a session's accumulated assets as an `AssetManifest`, independent of `css_mode`/`js_mode`.
 
 ```python
-from pyjinhx.assets import asset_manifest, resolver_with_hash
+from pyjinhx.rendering.assets import asset_manifest, resolver_with_hash
 
 resolver = resolver_with_hash("/static/components", root="./components")
 manifest = asset_manifest(session, resolver=resolver)
@@ -91,7 +91,7 @@ Build an asset resolver that embeds a content hash in each filename, in the shap
 - `root`: Directory the asset paths are laid out under; the part of a path below it is preserved in the URL.
 
 ```python
-from pyjinhx.assets import resolver_with_hash
+from pyjinhx.rendering.assets import resolver_with_hash
 
 resolver = resolver_with_hash("/static/components", root="./components")
 ```

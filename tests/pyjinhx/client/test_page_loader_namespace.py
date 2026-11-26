@@ -7,11 +7,11 @@ out — leaving the cold-load overlay stuck active.
 
 from __future__ import annotations
 
-from pyjinhx.assets import emit_assets
 from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx.client.inject import inject_runtime
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.rendering.assets import emit_assets
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
 
 def _load(page):

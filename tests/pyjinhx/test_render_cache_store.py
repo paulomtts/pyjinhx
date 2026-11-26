@@ -11,20 +11,19 @@ from typing import cast
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.classless import component
-from pyjinhx.descriptor import ClassDescriptor
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.components.classless import component
 from pyjinhx.integrations.diskcache import DiskCacheBackend
 from pyjinhx.reactive.backend import MISS, InMemoryCacheBackend
-from pyjinhx.render_cache import (
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.render_cache import (
     replay_asset_accumulation,
     restore_rendered_level,
     store_rendered_level,
 )
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import ChildRef, RenderedLevel, serialize
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture(autouse=True)

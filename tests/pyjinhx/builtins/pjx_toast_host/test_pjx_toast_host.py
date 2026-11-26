@@ -9,8 +9,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_toast_host import PJXToastHost
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ class TestAssets:
         assert js[0].is_file()
 
     def test_render_accumulates_both_assets_into_the_session(self, session):
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         session.on_rendered.append(accumulate_assets)
         _html(session)

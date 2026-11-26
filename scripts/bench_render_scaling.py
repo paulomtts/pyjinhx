@@ -19,8 +19,8 @@ from pyjinhx.builtins.pjx_table import PJXTable
 from pyjinhx.builtins.pjx_table_body import PJXTableBody
 from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 logging.getLogger("pyjinhx").setLevel(logging.ERROR)
 

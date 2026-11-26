@@ -2,12 +2,12 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
 from pyjinhx.builtins.pjx_avatar import PJXAvatar
 from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
 from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs
 
 
 def _visual(item: PJXRosterItem) -> BaseComponent:

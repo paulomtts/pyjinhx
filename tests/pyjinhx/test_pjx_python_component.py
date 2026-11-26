@@ -13,14 +13,16 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx import BaseComponent, assets, discovery
-from pyjinhx._component import all_component_classes
-from pyjinhx.assets import asset_token
-from pyjinhx.render_cache import render_cache_key
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
-from pyjinhx.sfc import BlockSyntaxError
-from pyjinhx.template_blocks import InlineAsset
+from pyjinhx import BaseComponent
+from pyjinhx.components import discovery
+from pyjinhx.components.base import all_component_classes
+from pyjinhx.document.scanner import BlockSyntaxError
+from pyjinhx.document.template_blocks import InlineAsset
+from pyjinhx.rendering import assets
+from pyjinhx.rendering.assets import asset_token
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.render_cache import render_cache_key
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 
 Write = Callable[[str, str], Path]
 
@@ -356,7 +358,7 @@ def test_python_dash_m_binds_the_class_and_leaves_it_unregistered(
         CARD.replace(
             "#}",
             "\nif __name__ == '__main__':\n"
-            "    from pyjinhx._component import all_component_classes\n"
+            "    from pyjinhx.components.base import all_component_classes\n"
             "    print(Card.__pjx_descriptor__.template_path)\n"
             "    print(Card(title='a').render())\n"
             "    print(Card in all_component_classes())\n#}",
@@ -484,7 +486,7 @@ def test_a_block_never_imported_through_the_hook_does_not_warn(
     write: Write, caplog: pytest.LogCaptureFixture
 ):
     path = write("pkg/card.pjx", CARD)
-    from pyjinhx.session import AbsolutePathLoader
+    from pyjinhx.rendering.session import AbsolutePathLoader
 
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         AbsolutePathLoader().get_source(jinja2.Environment(), str(path))

@@ -1,8 +1,8 @@
 from pydantic import Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
 from pyjinhx.builtins.pjx_avatar import PJXAvatar
 from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 
 def _remove_icon() -> PJXIcon:

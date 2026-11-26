@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx.assets import AssetManifest, AssetMode, asset_manifest
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.rendering.assets import AssetManifest, AssetMode, asset_manifest
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 A_CSS = Path("/app/components/a.css")
 B_CSS = Path("/app/components/b.css")

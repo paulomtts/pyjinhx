@@ -7,17 +7,17 @@ import json
 import os
 from typing import TYPE_CHECKING, Any, cast
 
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
 from pyjinhx.reactive.backend_health import (
     is_degraded,
     note_failure,
     note_write_success,
 )
-from pyjinhx.segments import ChildRef, RenderedLevel
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 
 if TYPE_CHECKING:
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.session import RenderSession
 
 # A cache hit is not free: the key, the backend read, the unpickle and the asset
 # replay come to roughly 20us for a small component. Caching a render cheaper

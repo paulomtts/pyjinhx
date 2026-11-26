@@ -9,10 +9,9 @@ from pathlib import Path
 import jinja2
 import pytest
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 

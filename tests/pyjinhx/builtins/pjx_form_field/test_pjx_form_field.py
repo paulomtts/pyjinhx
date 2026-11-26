@@ -47,8 +47,8 @@ class TestFields:
 
 
 from pyjinhx.builtins.pjx_spinner import PJXSpinner
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

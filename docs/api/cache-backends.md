@@ -3,7 +3,7 @@
 The cross-request cache tier: what `load()` results and rendered levels are reused for, and what that costs when it is wrong.
 
 !!! warning "Internal module"
-    Nothing on this page is part of the public API — `pyjinhx.reactive.backend`, `pyjinhx.render_cache` and `pyjinhx.integrations.diskcache` are absent from `pyjinhx.__all__` and their module paths may change. The one thing an app touches deliberately is `setup(app, cache_backend=...)` and the `cache=` class keyword; everything below it is described so the behaviour those two switch on is legible, not so it can be called directly.
+    Nothing on this page is part of the public API — `pyjinhx.reactive.backend`, `pyjinhx.rendering.render_cache` and `pyjinhx.integrations.diskcache` are absent from `pyjinhx.__all__` and their module paths may change. The one thing an app touches deliberately is `setup(app, cache_backend=...)` and the `cache=` class keyword; everything below it is described so the behaviour those two switch on is legible, not so it can be called directly.
 
 See [Cache & Invalidation](cache-invalidation.md) for tier 1, which is on always and needs no configuration.
 

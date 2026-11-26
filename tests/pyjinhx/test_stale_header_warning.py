@@ -16,11 +16,10 @@ them from the class name:
 import logging
 from pathlib import Path
 
-from pyjinhx import props_header
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.props_header import build_component_class, parse_props_header
-from pyjinhx.rendering import render_level
+from pyjinhx.components import props_header
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.components.props_header import build_component_class, parse_props_header
+from pyjinhx.rendering.pipeline import render_level
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 

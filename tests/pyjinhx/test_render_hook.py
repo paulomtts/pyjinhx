@@ -8,12 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.rendering import render, render_level
-from pyjinhx.segments import RenderedLevel
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, ClassDescriptor
+from pyjinhx.rendering.pipeline import render, render_level
+from pyjinhx.rendering.segments import RenderedLevel
+from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -110,7 +109,7 @@ def test_hook_receives_the_components_own_completed_level(session):
 
 def test_leaf_level_is_complete_when_its_own_hook_fires(session):
     """Post-order means no ChildRef holes are left in the level handed over."""
-    from pyjinhx.segments import ChildRef
+    from pyjinhx.rendering.segments import ChildRef
 
     holes: list[str] = []
 

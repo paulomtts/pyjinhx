@@ -11,8 +11,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_segmented_control import PJXSegmentedControl
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 OPTIONS = [("a", "Alpha"), ("b", "Beta"), ("c", "Gamma")]
 

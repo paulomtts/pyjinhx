@@ -7,8 +7,8 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 from pydantic.errors import PydanticUserError
 
-import pyjinhx._component
-from pyjinhx._component import (
+import pyjinhx.components.base
+from pyjinhx.components.base import (
     AttrValue,
     BaseComponent,
     Children,
@@ -561,30 +561,28 @@ FORBIDDEN_IMPORTS = ("pyjinhx.reactive",)
 
 
 def test_component_module_does_not_import_above_itself():
-    """_component.py sits below descriptor/render in the import graph, so it must
+    """base.py sits below descriptor/render in the import graph, so it must
     not reach up into them (nor into reactive/) — except the two
-    sanctioned edges: importing ``ClassDescriptor`` from descriptor.py (#271) to
+    sanctioned edges: importing ``ClassDescriptor`` from base.py (#271) to
     build and attach it in ``__pydantic_init_subclass__``, and the local,
     method-body-only imports of render.py/session.py inside
     ``BaseComponent.render()`` (#643), which exist because render.py imports
     BaseComponent at module scope and a module-level edge back would be a real
     cycle. tests/pyjinhx/test_import_graph.py is the whole-package view that
-    enforces _component.py is the *only* module allowed those edges."""
-    tree = ast.parse(inspect.getsource(pyjinhx._component))
+    enforces base.py is the *only* module allowed those edges."""
+    tree = ast.parse(inspect.getsource(pyjinhx.components.base))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             names = [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
-            assert node.level == 0, "_component.py must not use relative imports"
+            assert node.level == 0, "base.py must not use relative imports"
             names = [node.module or ""]
         else:
             continue
         for name in names:
-            assert name not in FORBIDDEN_IMPORTS, (
-                f"_component.py must not import {name}"
-            )
+            assert name not in FORBIDDEN_IMPORTS, f"base.py must not import {name}"
             assert not any(name.startswith(f"{f}.") for f in FORBIDDEN_IMPORTS), (
-                f"_component.py must not import {name}"
+                f"base.py must not import {name}"
             )
 
 

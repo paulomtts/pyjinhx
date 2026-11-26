@@ -5,10 +5,10 @@ import dataclasses
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_dropdown import PJXDropdown
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.components.base import BaseComponent, Slot
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
 
 @pytest.fixture

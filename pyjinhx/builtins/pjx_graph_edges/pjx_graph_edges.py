@@ -1,6 +1,11 @@
 from pydantic import Field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, validate_attr_value
+from pyjinhx.components.base import (
+    AttrValue,
+    BaseComponent,
+    ExtraAttrs,
+    validate_attr_value,
+)
 
 _EDGE_KEYS = frozenset({"id", "from", "to", "port", "to_port", "state", "label"})
 

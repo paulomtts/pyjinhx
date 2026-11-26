@@ -13,7 +13,8 @@ from pathlib import Path
 import pytest
 
 import pyjinhx
-from pyjinhx import importer, sfc
+from pyjinhx.components import importer
+from pyjinhx.document import scanner
 from tests.pyjinhx.conftest import Write
 
 # The class a block needs for the file to be a document at all.
@@ -136,14 +137,14 @@ def test_inspect_gets_the_source_of_a_function(write: Write):
 
 
 def test_the_loader_serves_the_padded_python(write: Write):
-    from pyjinhx import sfc
+    from pyjinhx.document import scanner
 
     text = "<p></p>\n{#python\nVALUE = 1\n" + CLASS + "#}\n"
     path = write("pkg/card.pjx", text)
     spec = importlib.import_module("pkg.card").__spec__
     loader = spec.loader if spec else None
     assert isinstance(loader, importer.PjxLoader)
-    assert loader.get_source("pkg.card") == sfc.python_source(text, str(path))
+    assert loader.get_source("pkg.card") == scanner.python_source(text, str(path))
     assert loader.is_package("pkg.card") is False
 
 
@@ -417,26 +418,26 @@ def test_install_survives_a_reloaded_importer(hook_state):
 
 def test_module_name_is_the_path_below_the_deepest_search_entry(tmp_path: Path):
     path = tmp_path / "app" / "ui" / "card.pjx"
-    assert sfc.module_name_for(path, [str(tmp_path)]) == "app.ui.card"
+    assert scanner.module_name_for(path, [str(tmp_path)]) == "app.ui.card"
     deeper = [str(tmp_path), str(tmp_path / "app")]
-    assert sfc.module_name_for(path, deeper) == "ui.card"
+    assert scanner.module_name_for(path, deeper) == "ui.card"
 
 
 def test_module_name_is_none_when_no_entry_holds_the_file(tmp_path: Path):
     path = tmp_path / "app" / "card.pjx"
-    assert sfc.module_name_for(path, [str(tmp_path / "other")]) is None
+    assert scanner.module_name_for(path, [str(tmp_path / "other")]) is None
 
 
 def test_module_name_is_none_for_a_directory_that_is_not_a_name(tmp_path: Path):
     path = tmp_path / "my-app" / "card.pjx"
-    assert sfc.module_name_for(path, [str(tmp_path)]) is None
+    assert scanner.module_name_for(path, [str(tmp_path)]) is None
 
 
 def test_module_name_reads_an_empty_entry_as_the_working_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.chdir(tmp_path)
-    assert sfc.module_name_for(tmp_path / "card.pjx", [""]) == "card"
+    assert scanner.module_name_for(tmp_path / "card.pjx", [""]) == "card"
 
 
 def test_module_name_walks_up_the_packages_when_the_top_is_on_the_path(
@@ -447,17 +448,17 @@ def test_module_name_walks_up_the_packages_when_the_top_is_on_the_path(
     (tmp_path / "site" / "comp" / "__init__.py").write_text("")
     path = tmp_path / "site" / "comp" / "badge.pjx"
     entries = [str(tmp_path / "site" / "comp"), str(tmp_path)]
-    assert sfc.module_name_for(path, entries) == "site.comp.badge"
+    assert scanner.module_name_for(path, entries) == "site.comp.badge"
 
 
 def test_module_name_without_a_search_path_is_the_package_walk(tmp_path: Path):
     (tmp_path / "site" / "comp").mkdir(parents=True)
     (tmp_path / "site" / "__init__.py").write_text("")
     (tmp_path / "site" / "comp" / "__init__.py").write_text("")
-    assert sfc.module_name_for(tmp_path / "site" / "comp" / "badge.pjx") == (
+    assert scanner.module_name_for(tmp_path / "site" / "comp" / "badge.pjx") == (
         "site.comp.badge"
     )
-    assert sfc.module_name_for(tmp_path / "loose" / "badge.pjx") == "badge"
+    assert scanner.module_name_for(tmp_path / "loose" / "badge.pjx") == "badge"
 
 
 def test_module_name_keeps_a_symlinked_directory_as_the_app_spells_it(
@@ -469,14 +470,16 @@ def test_module_name_keeps_a_symlinked_directory_as_the_app_spells_it(
     (tmp_path / "proj" / "app" / "__init__.py").write_text("")
     (tmp_path / "proj" / "app" / "ui").symlink_to(real)
     path = tmp_path / "proj" / "app" / "ui" / "card.pjx"
-    assert sfc.module_name_for(path, [str(tmp_path / "proj")]) == "app.ui.card"
+    assert scanner.module_name_for(path, [str(tmp_path / "proj")]) == "app.ui.card"
 
 
 def test_module_name_falls_back_to_the_resolved_path(tmp_path: Path):
     real = tmp_path / "real"
     real.mkdir()
     (tmp_path / "link").symlink_to(real)
-    assert sfc.module_name_for(tmp_path / "link" / "card.pjx", [str(real)]) == "card"
+    assert (
+        scanner.module_name_for(tmp_path / "link" / "card.pjx", [str(real)]) == "card"
+    )
 
 
 def test_import_document_imports_once_and_returns_the_module(write: Write):

@@ -10,12 +10,10 @@ from typing import get_args
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import BaseComponent, Children, Slot
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.markers import ComponentNode
-from pyjinhx.render_context import build_context
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, Children, ClassDescriptor, Slot
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
+from pyjinhx.rendering.template_context import ComponentNode, build_context
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -278,8 +276,8 @@ class TestListRendering:
         assert render(Card(content=[]), session()) == '<div class="list"></div>'
 
     def test_each_entry_enters_segments_as_its_own_rendered_level(self):
-        from pyjinhx.rendering import render_level
-        from pyjinhx.segments import RenderedLevel
+        from pyjinhx.rendering.pipeline import render_level
+        from pyjinhx.rendering.segments import RenderedLevel
 
         class Card(BaseComponent):
             content: Slot = ""
@@ -299,7 +297,7 @@ class TestListRendering:
         assert ">a<" not in text and ">b<" not in text
 
     def test_each_entry_is_rendered_exactly_once(self, monkeypatch):
-        import pyjinhx.rendering as render_module
+        import pyjinhx.rendering.pipeline as render_module
 
         class Card(BaseComponent):
             content: Slot = ""

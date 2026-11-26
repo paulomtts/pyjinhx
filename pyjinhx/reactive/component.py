@@ -24,8 +24,8 @@ from typing import (
 from pydantic import TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo
 
-from pyjinhx._component import BaseComponent
 from pyjinhx.app_context import resolve_load_context_param
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.backend import MISS, CacheBackend, CachePolicy
 from pyjinhx.reactive.backend_health import (
     is_degraded,
@@ -34,7 +34,7 @@ from pyjinhx.reactive.backend_health import (
 )
 from pyjinhx.reactive.cache import cache_get, cache_has, cache_put
 from pyjinhx.reactive.keys import coerce_load_key_str, coerce_reactive_key
-from pyjinhx.session import get_load_context
+from pyjinhx.rendering.session import get_load_context
 
 
 class ReactiveComponent(BaseComponent):

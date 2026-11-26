@@ -14,9 +14,8 @@ from typing import Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent, _OpenComponent
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.props_header import build_component_class, parse_props_header
+from pyjinhx.components.base import BaseComponent, ClassDescriptor, _OpenComponent
+from pyjinhx.components.props_header import build_component_class, parse_props_header
 from tests.pyjinhx import header_names
 
 
@@ -130,7 +129,7 @@ def test_header_declared_slots_are_detected_as_slots_on_the_built_class(
 ):
     """Closing the loop: resolution is only useful if the marker survives
     create_model and the shared slot check sees it."""
-    from pyjinhx._component import _is_slot_field
+    from pyjinhx.components.base import _is_slot_field
 
     fields = parse_props_header(f"{{#def {prop}: {annotation} #}}")
     assert fields is not None
@@ -140,7 +139,7 @@ def test_header_declared_slots_are_detected_as_slots_on_the_built_class(
 
 def test_header_declared_plain_props_are_not_slots():
     """The detection above must come from the marker, not from being generated."""
-    from pyjinhx._component import _is_slot_field
+    from pyjinhx.components.base import _is_slot_field
 
     fields = parse_props_header("{#def title: str #}")
     assert fields is not None
@@ -160,8 +159,8 @@ def test_descriptor_template_path_is_provisional_until_relocated(tmp_path, monke
     import types
     from pathlib import Path
 
-    import pyjinhx.props_header as props_header_module
-    from pyjinhx._component import rebuild_class_descriptor
+    import pyjinhx.components.props_header as props_header_module
+    from pyjinhx.components.base import rebuild_class_descriptor
 
     cls = build_component_class([("title", str, ...)], "Card")
     assert cls.__module__ == props_header_module.__name__
@@ -192,7 +191,7 @@ def test_header_declared_slot_union_is_detected_as_slot_on_the_built_class(
     """Pydantic hoists metadata only from the outermost Annotated, so an
     optional slot arrives with empty field metadata and the marker still nested
     inside the union; detection has to unwrap it."""
-    from pyjinhx._component import _is_slot_field
+    from pyjinhx.components.base import _is_slot_field
 
     fields = parse_props_header(f"{{#def value: {annotation} #}}")
     assert fields is not None

@@ -146,10 +146,10 @@ For strict `script-src` policies, use `AssetMode.NONE`, serve assets from a pre-
 
 ## Per-Render Manifest
 
-!!! warning "`pyjinhx.assets` is not yet public"
+!!! warning "`pyjinhx.rendering.assets` is not yet public"
     Everything in the rest of this page — `asset_manifest()`, `all_assets()`,
     `resolver_with_hash()`, `hashed_filename()`, `emit_assets()`, `asset_token()` — lives
-    in `pyjinhx.assets`, which is **not** in `pyjinhx.__all__`. These are the only spelling
+    in `pyjinhx.rendering.assets`, which is **not** in `pyjinhx.__all__`. These are the only spelling
     for build-time asset enumeration today, so they are documented here, but the module path
     may change. Only `AssetMode` and `RenderSession` are public.
 
@@ -157,7 +157,7 @@ Inspect which assets a render used. `asset_manifest` takes any resolver shaped
 `Callable[[Path], str]` — `resolver_with_hash` builds one that also cache-busts filenames:
 
 ```python
-from pyjinhx.assets import asset_manifest, resolver_with_hash
+from pyjinhx.rendering.assets import asset_manifest, resolver_with_hash
 
 resolver = resolver_with_hash("/static/components", root="./components")
 manifest = asset_manifest(session, resolver=resolver)
@@ -171,7 +171,7 @@ walks every registered component class (not just the ones a given render used) a
 CSS and JS paths, deduped and sorted:
 
 ```python
-from pyjinhx.assets import all_assets, resolver_with_hash
+from pyjinhx.rendering.assets import all_assets, resolver_with_hash
 
 resolver = resolver_with_hash("/static/components", root="./components")
 css_paths, js_paths = all_assets()
@@ -192,7 +192,7 @@ Embed content hashes in filenames:
 
 ```python
 from pathlib import Path
-from pyjinhx.assets import hashed_filename, resolver_with_hash
+from pyjinhx.rendering.assets import hashed_filename, resolver_with_hash
 
 hashed_filename(Path("components/ui/button.js"))  # "button.a1b2c3d4.js"
 resolver = resolver_with_hash("/static/components", root="./components")
@@ -219,7 +219,7 @@ request — so set the modes from inside the scope. A FastAPI dependency runs th
 ```python
 from fastapi import Depends, FastAPI
 from pyjinhx import AssetMode, setup
-from pyjinhx.session import current_session  # not yet public
+from pyjinhx.rendering.session import current_session  # not yet public
 
 
 def bundled_assets():
@@ -233,7 +233,7 @@ setup(app, components_root="./components")
 ```
 
 !!! note "Not yet public"
-    `current_session()` lives in `pyjinhx.session`, which is not exported from `pyjinhx`.
+    `current_session()` lives in `pyjinhx.rendering.session`, which is not exported from `pyjinhx`.
     There is no public per-app asset-mode setting yet; when there is, it will replace this.
 
 ## Static File Serving
@@ -241,7 +241,7 @@ setup(app, components_root="./components")
 Use `all_assets()` to get every component's asset paths for static serving:
 
 ```python
-from pyjinhx.assets import all_assets
+from pyjinhx.rendering.assets import all_assets
 
 css_paths, js_paths = all_assets()
 # each is a sorted tuple[Path, ...], e.g. (Path("ui/button.css"), Path("ui/dropdown.css"), ...)
@@ -256,7 +256,7 @@ a static file. Set both modes to `NONE` so components don't inline what the bund
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from pyjinhx import AssetMode, setup
-from pyjinhx.session import current_session  # not yet public
+from pyjinhx.rendering.session import current_session  # not yet public
 
 from components import MyApp
 
@@ -305,7 +305,7 @@ import hashlib
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
-from pyjinhx.assets import all_assets
+from pyjinhx.rendering.assets import all_assets
 
 app = FastAPI()
 

@@ -4,7 +4,7 @@ import pytest
 
 from pyjinhx.reactive.keys import MutationKey, reactive_key
 from pyjinhx.reactive.mutations import dirty, mutates
-from pyjinhx.session import add_dirtied, get_dirtied, request_scope
+from pyjinhx.rendering.session import add_dirtied, get_dirtied, request_scope
 
 
 class Keys(MutationKey):

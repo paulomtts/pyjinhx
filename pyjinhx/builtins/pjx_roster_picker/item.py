@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from pyjinhx._component import Slot
+from pyjinhx.components.base import Slot
 
 
 class PJXRosterItem(BaseModel):

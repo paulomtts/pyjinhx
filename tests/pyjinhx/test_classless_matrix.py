@@ -14,13 +14,13 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, _OpenComponent
-from pyjinhx.classless import component
-from pyjinhx.props_header import parse_props_header
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import serialize
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, _OpenComponent
+from pyjinhx.components.classless import component
+from pyjinhx.components.props_header import parse_props_header
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.segments import serialize
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture(autouse=True)
@@ -149,7 +149,7 @@ def test_the_descriptor_is_one_frozen_object_not_a_per_read_computation(tmp_path
 
 def test_rendering_never_recomputes_the_descriptor(tmp_path, monkeypatch):
     """N renders cost zero header parses: the probe ran at build time."""
-    from pyjinhx import props_header
+    from pyjinhx.components import props_header
 
     write_template(tmp_path, "card", '{#def title: str = "hi" #}<div>{{ title }}</div>')
     cls = component("Card", template_dir=tmp_path)

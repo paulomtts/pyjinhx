@@ -13,17 +13,18 @@ import jinja2
 import pytest
 from pydantic import field_validator
 
-from pyjinhx import BaseComponent, discovery
-from pyjinhx.assets import asset_token
-from pyjinhx.render_cache import render_cache_key
-from pyjinhx.rendering import render
-from pyjinhx.session import (
+from pyjinhx import BaseComponent
+from pyjinhx.components import discovery
+from pyjinhx.document.template_blocks import InlineAsset
+from pyjinhx.rendering.assets import asset_token
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.render_cache import render_cache_key
+from pyjinhx.rendering.session import (
     AbsolutePathLoader,
     RenderSession,
     accumulate_assets,
     request_scope,
 )
-from pyjinhx.template_blocks import InlineAsset
 
 THIS_FILE = Path(__file__)
 
@@ -609,7 +610,7 @@ def test_a_stray_comment_close_in_an_inline_block_is_reported_in_the_python_file
 def test_an_inline_class_claims_its_tag_over_a_namesake_orphan(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    from pyjinhx.classless import component_for_tag
+    from pyjinhx.components.classless import component_for_tag
 
     (tmp_path / "headed.pjx").write_text("{#def title: str #}<p>file</p>")
     headed = _import_file(_headed_module(tmp_path, ["<h1>inline</h1>"]), monkeypatch)

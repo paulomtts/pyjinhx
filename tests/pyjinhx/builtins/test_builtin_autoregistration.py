@@ -4,7 +4,7 @@ register_class call (issue #738) — setup(components_root=...) alone is enough.
 
 import pytest
 
-from pyjinhx import discovery
+from pyjinhx.components import discovery
 
 
 @pytest.fixture(autouse=True)
@@ -21,10 +21,10 @@ def reset_registry():
 def test_nested_builtin_tags_expand_after_setup_alone(tmp_path):
     """A user template using <PJXCard><PJXCardBody> renders with no register_class call."""
     import pyjinhx.builtins  # noqa: F401
-    from pyjinhx.classless import component
+    from pyjinhx.components.classless import component
     from pyjinhx.config import setup
-    from pyjinhx.rendering import render
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.pipeline import render
+    from pyjinhx.rendering.session import RenderSession
 
     (tmp_path / "user_page.pjx").write_text(
         "<PJXCard><PJXCardBody>hello</PJXCardBody></PJXCard>"

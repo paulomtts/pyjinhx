@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 
 from pyjinhx.builtins import PJXChart, PJXChartSeries
 from pyjinhx.client import read_pjx_theme_css, read_vendored_htmx
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page

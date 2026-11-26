@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx.classless import component
-from pyjinhx.rendering import render
+from pyjinhx.components import discovery
+from pyjinhx.components.classless import component
+from pyjinhx.rendering.pipeline import render
 
 
 @pytest.fixture(autouse=True)

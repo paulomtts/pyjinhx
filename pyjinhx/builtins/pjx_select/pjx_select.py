@@ -2,7 +2,7 @@ from typing import ClassVar, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs
 
 
 class SelectOption(BaseModel):

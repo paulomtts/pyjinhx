@@ -3,13 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx._component import BaseComponent, Slot
 from pyjinhx.builtins.pjx_card import PJXCard
 from pyjinhx.builtins.pjx_card_body import PJXCardBody
 from pyjinhx.builtins.pjx_card_footer import PJXCardFooter
 from pyjinhx.builtins.pjx_card_header import PJXCardHeader
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components.base import BaseComponent, Slot
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

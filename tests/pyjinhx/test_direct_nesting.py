@@ -13,14 +13,18 @@ from typing import Annotated, Any
 
 import pytest
 
-from pyjinhx._component import BaseComponent, Children, PjxSlot, Slot
-from pyjinhx.descriptor import ClassDescriptor
-from pyjinhx.markers import ComponentNode
+from pyjinhx.components.base import (
+    BaseComponent,
+    Children,
+    ClassDescriptor,
+    PjxSlot,
+    Slot,
+)
 from pyjinhx.reactive.component import ReactiveComponent
-from pyjinhx.render_context import build_context
-from pyjinhx.rendering import render, render_level
-from pyjinhx.segments import RenderedLevel
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render, render_level
+from pyjinhx.rendering.segments import RenderedLevel
+from pyjinhx.rendering.session import RenderSession
+from pyjinhx.rendering.template_context import ComponentNode, build_context
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
@@ -196,7 +200,7 @@ class TestNestedOfNested:
             "nest_content.html", frozenset({"content"}), "content"
         )
 
-        import pyjinhx.rendering as render_module
+        import pyjinhx.rendering.pipeline as render_module
 
         real_parser = render_module.VerbatimParser
         calls: list[int] = []

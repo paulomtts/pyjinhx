@@ -53,7 +53,7 @@ def index():
 
 !!! note "Not yet public"
     On a framework pyjinhx has no backend for, you can open the scope by hand with
-    `from pyjinhx.session import request_scope`. That module is **not** part of the
+    `from pyjinhx.rendering.session import request_scope`. That module is **not** part of the
     public API (`pyjinhx.__all__`) and its spelling may change — prefer `setup(app)`
     wherever it works.
 

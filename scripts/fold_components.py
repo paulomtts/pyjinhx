@@ -27,8 +27,8 @@ from pathlib import Path
 
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.props_header import parse_props_header
-from pyjinhx.sfc import (
+from pyjinhx.components.props_header import parse_props_header
+from pyjinhx.document.scanner import (
     BlockSyntaxError,
     extract_template,
     has_markup,
@@ -38,7 +38,7 @@ from pyjinhx.sfc import (
     python_block,
     template_value,
 )
-from pyjinhx.template_blocks import find_block, find_header
+from pyjinhx.document.template_blocks import find_block, find_header
 
 _SKIPPED_DIRS = {"__pycache__", "node_modules"}
 

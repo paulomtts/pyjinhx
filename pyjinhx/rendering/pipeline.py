@@ -12,13 +12,12 @@ from typing import Any, cast
 import jinja2
 from pydantic import TypeAdapter
 
-from pyjinhx._component import BaseComponent, _pascal_to_snake
-from pyjinhx.assets import emit_assets
-from pyjinhx.classless import component_for_tag
-from pyjinhx.discovery import get_class
-from pyjinhx.markers import SLOT_TOKEN_RE, collect_slot_tokens
-from pyjinhx.props_header import warn_stale_def_header
-from pyjinhx.render_cache import (
+from pyjinhx.components.base import BaseComponent, _pascal_to_snake
+from pyjinhx.components.classless import component_for_tag
+from pyjinhx.components.discovery import get_class
+from pyjinhx.components.props_header import warn_stale_def_header
+from pyjinhx.rendering.assets import emit_assets
+from pyjinhx.rendering.render_cache import (
     auto_id_in_output,
     holds_spliced_components,
     is_too_cheap,
@@ -29,9 +28,18 @@ from pyjinhx.render_cache import (
     resolve_render_tier2,
     save_rendered_level,
 )
-from pyjinhx.render_context import build_context
-from pyjinhx.segments import ChildRef, RenderedLevel, VerbatimParser, serialize
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.rendering.segments import (
+    ChildRef,
+    RenderedLevel,
+    VerbatimParser,
+    serialize,
+)
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
+from pyjinhx.rendering.template_context import (
+    SLOT_TOKEN_RE,
+    build_context,
+    collect_slot_tokens,
+)
 
 # How many times one class may appear on a single nesting path before the path
 # is treated as a cycle. A terminating design reuses a class a handful of times

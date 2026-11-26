@@ -1,4 +1,9 @@
-"""Single-file components: reading a class's inline template out of its module.
+"""Static reading of a pjx document, with the standard library alone.
+
+Holds the comment lexer, the block keywords and their error codes, the
+``{#python`` block, inline-template extraction, the header signature, module
+naming and the PascalCase/snake_case naming rules. Everything here parses
+source text and never imports or executes it.
 
 A component may carry its template as a string instead of an adjacent `.pjx`
 file::

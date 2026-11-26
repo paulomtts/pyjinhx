@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import Field
 
 from pyjinhx import BaseComponent
-from pyjinhx._component import AttrValue, ExtraAttrs
+from pyjinhx.components.base import AttrValue, ExtraAttrs
 
 
 class Button(BaseComponent):

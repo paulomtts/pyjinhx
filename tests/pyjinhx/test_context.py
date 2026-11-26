@@ -3,7 +3,7 @@
 import pytest
 
 from pyjinhx.context import PjxContext
-from pyjinhx.session import (
+from pyjinhx.rendering.session import (
     NoActiveRequestScope,
     add_dirtied,
     current_session,

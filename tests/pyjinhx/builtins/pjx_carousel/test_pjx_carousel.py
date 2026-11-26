@@ -9,13 +9,13 @@ pre-existing gap, not fixed by #534.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx import discovery
 from pyjinhx.builtins.pjx_carousel import PJXCarousel
 from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.client import read_pjx_theme_css
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture
@@ -258,7 +258,7 @@ class TestAssets:
         assert "data-pjx-carousel" in source
 
     def test_render_accumulates_both_assets_into_the_session(self, session):
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         session.on_rendered.append(accumulate_assets)
         _html(session)

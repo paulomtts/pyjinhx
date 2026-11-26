@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from pydantic import Field, ValidationInfo, computed_field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
+from pyjinhx.components.base import AttrValue, BaseComponent, ExtraAttrs, Slot
 
 _PX = re.compile(r"^\d+(\.\d+)?px$")
 _NUM = re.compile(r"\d+(\.\d+)?")

@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent
-from pyjinhx.discovery import build_registry, get_class, walk_templates
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent
+from pyjinhx.components.discovery import build_registry, get_class, walk_templates
 
 DISCOVERY_DIR = Path(__file__).parent.parent / "templates" / "discovery"
 

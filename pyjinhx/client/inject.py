@@ -6,7 +6,6 @@ import json
 import logging
 from typing import Any
 
-from pyjinhx.assets import AssetMode
 from pyjinhx.client import (
     read_loading_indicator_js,
     read_page_loader_js,
@@ -15,7 +14,8 @@ from pyjinhx.client import (
     read_pjx_theme_css,
     read_vendored_htmx,
 )
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.assets import AssetMode
+from pyjinhx.rendering.session import RenderSession
 
 logger = logging.getLogger(__name__)
 

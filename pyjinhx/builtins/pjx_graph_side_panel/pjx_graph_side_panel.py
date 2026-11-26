@@ -1,6 +1,6 @@
 from pydantic import Field, field_validator
 
-from pyjinhx._component import AttrValue, BaseComponent, Children, ExtraAttrs, Slot
+from pyjinhx.components.base import AttrValue, BaseComponent, Children, ExtraAttrs, Slot
 
 
 class PJXGraphSidePanel(BaseComponent):

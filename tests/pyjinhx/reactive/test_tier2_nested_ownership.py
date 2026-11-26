@@ -19,13 +19,13 @@ from typing import Annotated
 
 import pytest
 
-from pyjinhx import discovery
+from pyjinhx.components import discovery
 from pyjinhx.config import configure_pyjinhx, current_settings
 from pyjinhx.reactive.backend import InMemoryCacheBackend
 from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
-from pyjinhx.rendering import render
-from pyjinhx.session import request_scope
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import request_scope
 
 STORE = {"conversation": "1"}
 CHILD_LOAD_KEYS: list[str] = []

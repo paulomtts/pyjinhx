@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 class TestFields:
@@ -154,7 +154,7 @@ class TestAssets:
         # `session.on_rendered.append(accumulate_assets)` explicitly before
         # asserting on css_assets/js_assets. A bare render() leaves both sets
         # empty regardless of the descriptor's asset paths.
-        from pyjinhx.session import accumulate_assets
+        from pyjinhx.rendering.session import accumulate_assets
 
         session.on_rendered.append(accumulate_assets)
         _html(session)

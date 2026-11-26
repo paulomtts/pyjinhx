@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING, Any
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, Response
 
-from pyjinhx._component import BaseComponent
 from pyjinhx.client.inject import (
     LoadedAssets,
     MountedManifest,
     TriggerManifest,
     inject_runtime,
 )
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.config import (
     PjxSettings,
     configure_pyjinhx,
@@ -30,10 +30,10 @@ from pyjinhx.integrations.base import (
     ContextFactory,
     register_backend,
 )
+from pyjinhx.integrations.responses import PASSTHROUGH, PjxResponse, compose
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
-from pyjinhx.registry import register_rendered_instance
-from pyjinhx.responses import PASSTHROUGH, PjxResponse, compose
-from pyjinhx.session import (
+from pyjinhx.rendering.registry import register_rendered_instance
+from pyjinhx.rendering.session import (
     RenderSession,
     _environment_for,
     accumulate_assets,
@@ -98,7 +98,7 @@ class FastAPIBackend:
         """Emit compose()'s answer, or hand back a result that is not pjx's.
 
         Composition — including whether this request fans out — is decided by
-        `pyjinhx.responses.compose`, which no framework has to be installed for.
+        `pyjinhx.integrations.responses.compose`, which no framework has to be installed for.
         All that is left here is turning that answer into a Starlette response.
         """
         session = current_session()

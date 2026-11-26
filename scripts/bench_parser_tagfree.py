@@ -27,7 +27,7 @@ import os
 import statistics
 import time
 
-from pyjinhx.segments import VerbatimParser
+from pyjinhx.rendering.segments import VerbatimParser
 
 TOTAL_BYTES = 65536
 REPEATS = 7

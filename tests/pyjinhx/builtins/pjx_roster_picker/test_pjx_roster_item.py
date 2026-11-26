@@ -7,8 +7,8 @@ import pytest
 from markupsafe import Markup
 from pydantic import ValidationError
 
-from pyjinhx._component import PjxSlot, _is_slot_field
 from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem
+from pyjinhx.components.base import PjxSlot, _is_slot_field
 
 OPTIONAL_FIELDS = ["subtitle", "initials", "color", "src", "icon", "extra", "detail"]
 TEXT_FIELDS = ["value", "label", "subtitle", "initials", "color", "src", "icon"]

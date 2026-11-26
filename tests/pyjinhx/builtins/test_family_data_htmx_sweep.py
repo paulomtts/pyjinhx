@@ -18,8 +18,6 @@ from typing import Annotated
 import pytest
 from pydantic import Field
 
-from pyjinhx import discovery, registry
-from pyjinhx._component import Slot, _pascal_to_snake
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx.builtins.pjx_paginator import PJXPaginator
@@ -30,13 +28,16 @@ from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.builtins.pjx_table_head import PJXTableHead
 from pyjinhx.builtins.pjx_table_header_cell import PJXTableHeaderCell
 from pyjinhx.builtins.pjx_table_row import PJXTableRow
+from pyjinhx.components import discovery
+from pyjinhx.components.base import Slot, _pascal_to_snake
+from pyjinhx.integrations.responses import PjxResponse, compose
 from pyjinhx.reactive.cache import cache_has, invalidate
 from pyjinhx.reactive.component import PjxKey, ReactiveComponent
 from pyjinhx.reactive.fanout import walk_manifest
 from pyjinhx.reactive.root_attrs import stamp_reactive_root_attrs
-from pyjinhx.rendering import render
-from pyjinhx.responses import PjxResponse, compose
-from pyjinhx.session import (
+from pyjinhx.rendering import registry
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import (
     RenderSession,
     add_dirtied,
     get_dirtied,
@@ -68,7 +69,7 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
     Reproduced directly against this branch: a Slot field's *string* value —
     which is what a tag-nested child's inner markup becomes (``ref.inner`` in
     ``render.py``'s ``_instantiate_child``) — is not Markup-exempted from
-    autoescape anywhere in the L0/L1 pipeline yet (render_context.py's
+    autoescape anywhere in the L0/L1 pipeline yet (template_context.py's
     ``build_context`` only wraps *component-valued* Slot fields; a plain
     string Slot field passes through untouched and Jinja's ``{{ content }}``
     escapes it). ``tests/pyjinhx/test_render_context.py`` names this

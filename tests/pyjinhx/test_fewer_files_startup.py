@@ -13,9 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import BaseComponent, Slot, discovery
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, accumulate_assets, request_scope
+from pyjinhx import BaseComponent, Slot
+from pyjinhx.components import discovery
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_scope
 
 COUNT = 300
 

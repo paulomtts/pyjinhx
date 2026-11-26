@@ -12,17 +12,24 @@ from typing import Any
 
 import pytest
 
-from pyjinhx import discovery, rendering
-from pyjinhx._component import BaseComponent, Children, Slot, _pascal_to_snake
+from pyjinhx.components import discovery
+from pyjinhx.components.base import (
+    BaseComponent,
+    Children,
+    ClassDescriptor,
+    Slot,
+    _pascal_to_snake,
+)
 from pyjinhx.config import configure_pyjinhx, current_settings
-from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.reactive.backend import CachePolicy, InMemoryCacheBackend
 from pyjinhx.reactive.backend_health import (
     is_degraded,
     note_failure,
     reset_backend_health,
 )
-from pyjinhx.render_cache import (
+from pyjinhx.rendering import pipeline
+from pyjinhx.rendering.pipeline import render_level
+from pyjinhx.rendering.render_cache import (
     copy_level_shell,
     holds_spliced_components,
     load_rendered_level,
@@ -30,9 +37,8 @@ from pyjinhx.render_cache import (
     resolve_render_tier2,
     save_rendered_level,
 )
-from pyjinhx.rendering import render_level
-from pyjinhx.segments import ChildRef, RenderedLevel, serialize
-from pyjinhx.session import RenderSession, accumulate_assets
+from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
+from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
 
 def test_a_plain_component_records_an_explicit_cache_policy():
@@ -439,7 +445,7 @@ def test_no_backend_configured_never_computes_a_key(
     def boom(component: object) -> str:
         raise AssertionError("render_cache_key was computed with tier 2 off")
 
-    monkeypatch.setattr(rendering, "render_cache_key", boom)
+    monkeypatch.setattr(pipeline, "render_cache_key", boom)
 
     assert serialize(render_level(_CachedBox(id="a", label="hi"), RenderSession())) == (
         "<div>hi</div>"
@@ -459,7 +465,7 @@ def test_a_component_valued_slot_is_never_cached_and_splices_every_time(
         _HoleHolder, holder, slot_fields=frozenset({"body"}), children_field="content"
     )
 
-    real_render_cache_key = rendering.render_cache_key
+    real_render_cache_key = pipeline.render_cache_key
 
     def guarded(component: BaseComponent) -> str:
         # Scoped to _HoleHolder itself, not the whole tree: its spliced _Inner
@@ -472,7 +478,7 @@ def test_a_component_valued_slot_is_never_cached_and_splices_every_time(
             )
         return real_render_cache_key(component)
 
-    monkeypatch.setattr(rendering, "render_cache_key", guarded)
+    monkeypatch.setattr(pipeline, "render_cache_key", guarded)
 
     first = serialize(render_level(_HoleHolder(id="a", body=_Inner()), RenderSession()))
     second = serialize(

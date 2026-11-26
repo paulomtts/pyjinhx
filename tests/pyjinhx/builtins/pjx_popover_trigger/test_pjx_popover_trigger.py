@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_popover_trigger import PJXPopoverTrigger
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

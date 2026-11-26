@@ -13,12 +13,12 @@ from pathlib import Path
 
 from markupsafe import Markup
 
-from pyjinhx._component import BaseComponent
+from pyjinhx.components.base import BaseComponent
 from pyjinhx.reactive.assets import missing_asset_oob
 from pyjinhx.reactive.cache import invalidate
 from pyjinhx.reactive.fanout import oob_swaps, walk_manifest
-from pyjinhx.rendering import render
-from pyjinhx.session import (
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import (
     RenderSession,
     accumulate_assets,
     current_session,

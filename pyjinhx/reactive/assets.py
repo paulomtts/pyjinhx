@@ -6,7 +6,7 @@ and the client tells the server which ones it already has in ``X-PJX-Assets``.
 This module answers the difference, as head-targeted OOB fragments pjx.js
 relocates on arrival (``pyjinhx/client/pjx.js`` reads ``data-pjx-asset``).
 
-Ported from v0.x's ``render_missing_assets_oob`` (``pyjinhx/assets.py``). The
+Ported from v0.x's ``render_missing_assets_oob`` (``pyjinhx/rendering/assets.py``). The
 required paths are the union of two sources: the candidates' frozen class
 descriptors, which is the only place a clean candidate's assets appear because
 a clean candidate never renders, and the session's accumulator, which is the
@@ -18,15 +18,15 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from pyjinhx.assets import (
+from pyjinhx.reactive.fanout import FanoutCandidate
+from pyjinhx.rendering.assets import (
     BUILTIN_ORIGIN_ATTR,
     AssetMode,
     _sorted_resolved,
     _split_by_origin,
     asset_token,
 )
-from pyjinhx.reactive.fanout import FanoutCandidate
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.session import RenderSession
 
 
 def required_asset_paths(

@@ -7,7 +7,7 @@ import pkgutil
 from pydantic import AfterValidator
 
 import pyjinhx.builtins
-from pyjinhx._component import BaseComponent, validate_extra_attrs
+from pyjinhx.components.base import BaseComponent, validate_extra_attrs
 
 # Class names of builtins that legitimately have no root HTML tag to hang
 # attributes on. Empty today: every builtin renders a single root element.

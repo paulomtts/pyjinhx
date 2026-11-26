@@ -1,14 +1,14 @@
 """Root-attr stamp: splice a component's pass-through attrs into its
 RenderedLevel's root opening tag, at the already-recorded root_span.
 
-Import-pure (stdlib only) — this module may not import pyjinhx.rendering,
-pyjinhx._component, or pyjinhx.session (same rule as pyjinhx.segments).
+Import-pure (stdlib only) — this module may not import pyjinhx.rendering.pipeline,
+pyjinhx.components.base, or pyjinhx.rendering.session (same rule as pyjinhx.rendering.segments).
 Single-root detection is NOT this module's job: it trusts the root_span
 it is given, produced by an earlier L0 step (issue #247's detection pass
-via VerbatimParser in pyjinhx/segments.py). This module never re-parses;
+via VerbatimParser in pyjinhx/rendering/segments.py). This module never re-parses;
 it only slices and concatenates strings.
 
-Port of v1 pyjinhx/root_attrs.py's `apply_root_attrs` / `_override_tag`
+Port of v1 pyjinhx/rendering/root_attrs.py's `apply_root_attrs` / `_override_tag`
 behavior, scoped to L0: only pass-through attrs land here. `data-pjx-*` /
 `hx-swap-oob` stamping (L2/L3) reuses this same splice at the same span.
 
@@ -21,7 +21,7 @@ and never learns what "reactive" means.
 
 import re
 
-from pyjinhx.segments import RenderedLevel
+from pyjinhx.rendering.segments import RenderedLevel
 
 
 def serialize_attr(name: str, value: str) -> str:
@@ -89,7 +89,7 @@ def stamp_root_attrs(
     segment, replaces the ``root_span`` substring of it with the stamped tag
     text, and updates ``root_span`` to match the new tag's length. Mutates
     ``level`` in place and returns it, matching the ``splice()`` convention
-    in ``pyjinhx.segments``.
+    in ``pyjinhx.rendering.segments``.
 
     ``root_span`` is an absolute offset into the raw source that produced
     ``segments``, so it is rebased by the summed length of the skipped

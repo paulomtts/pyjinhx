@@ -57,7 +57,7 @@ Raising out of `load()` is meaningful: a `LookupError` (which `KeyError` and `In
 def mutates(*keys: MutationKey, key: Callable[..., object] | None = None) -> Callable[[F], F]
 ```
 
-Decorator for store mutation methods. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError` at decoration time. After the wrapped function returns, it records those keys in this request's dirtied set — and does nothing else. Cache eviction and the dependency walk happen later, when `pyjinhx.responses.compose()` composes the handler's return (see [Response composition](responses.md)).
+Decorator for store mutation methods. Each arg must be a **`MutationKey` member** or a **`reactive_key()`** value — bare strings raise `TypeError` at decoration time. After the wrapped function returns, it records those keys in this request's dirtied set — and does nothing else. Cache eviction and the dependency walk happen later, when `pyjinhx.integrations.responses.compose()` composes the handler's return (see [Response composition](responses.md)).
 
 ```python
 from pyjinhx import MutationKey, mutates

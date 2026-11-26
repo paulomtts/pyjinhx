@@ -79,7 +79,7 @@ nothing else about the component changes.
 ## 1.1.x → 1.2.0
 
 1.2.0 moves response composition out of the render path and into one framework-free
-module, `pyjinhx.responses`. The visible consequence is that `ReactiveResponse` is gone:
+module, `pyjinhx.integrations.responses`. The visible consequence is that `ReactiveResponse` is gone:
 a handler returns a component, a string, `None`, or its own framework's response object,
 and `compose()` turns that into the body and htmx headers. See
 [Responses](api/responses.md) for the full surface.
@@ -135,7 +135,7 @@ the fan-out on its own, plus `HX-Reswap: none` so htmx leaves the triggering ele
 
 ### Fan-out belongs to the composer, not to `render()` (behavioral)
 
-`pyjinhx.responses.compose(result, *, session=None)` is what walks the client's manifest,
+`pyjinhx.integrations.responses.compose(result, *, session=None)` is what walks the client's manifest,
 evicts the request's dirtied keys, and appends the OOB legs. `render()` returns one
 component's markup and nothing else — it never appended OOB swaps, and code written on the
 assumption that it did was relying on `ReactiveResponse` to do the work.
@@ -924,9 +924,9 @@ class TodoList(ReactiveComponent):
         return cls(items=ctx.db.todos_for(ctx.user) if ctx else [])
 ```
 
-### `pyjinhx.render` → `pyjinhx.rendering`
+### `pyjinhx.render` → `pyjinhx.rendering.pipeline`
 
-The render-pipeline submodule is `pyjinhx.rendering` in 1.0 (`render()`, `render_level()`
+The render-pipeline submodule is `pyjinhx.rendering.pipeline` in 1.0 (`render()`, `render_level()`
 internals). If you imported from a `pyjinhx.render` submodule directly rather than the
 top-level `pyjinhx.render` function, update the import path.
 

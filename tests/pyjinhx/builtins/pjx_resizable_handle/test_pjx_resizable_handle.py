@@ -7,8 +7,8 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_resizable_handle import PJXResizableHandle
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture

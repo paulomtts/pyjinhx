@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.session import RenderSession
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page

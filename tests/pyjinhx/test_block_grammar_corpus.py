@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import manifest, sfc
-from pyjinhx.template_blocks import (
+from pyjinhx import manifest
+from pyjinhx.document import scanner
+from pyjinhx.document.template_blocks import (
     BlockTemplateSyntaxError,
     find_block,
     inline_assets,
@@ -19,7 +20,7 @@ CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "block_grammar"
 def _scan(source: str, filename: str) -> tuple[list[dict], dict | None]:
     """The blocks and the lowest-line error the scanners report for ``source``."""
     blocks: list[tuple[str, int, int]] = []
-    errors: list[BlockTemplateSyntaxError | sfc.BlockSyntaxError] = []
+    errors: list[BlockTemplateSyntaxError | scanner.BlockSyntaxError] = []
     for keyword in ("def", "css", "js"):
         try:
             block = find_block(source, keyword, filename)
@@ -29,15 +30,15 @@ def _scan(source: str, filename: str) -> tuple[list[dict], dict | None]:
             if block is not None:
                 blocks.append((keyword, block.line, block.close_line))
     try:
-        python = sfc.python_block(source, filename)
-    except sfc.BlockSyntaxError as error:
+        python = scanner.python_block(source, filename)
+    except scanner.BlockSyntaxError as error:
         errors.append(error)
     else:
         if python is not None:
             blocks.append(("python", python.open_line, python.close_line))
     try:
         inline_assets(Path(filename), source)
-    except (BlockTemplateSyntaxError, sfc.BlockSyntaxError) as error:
+    except (BlockTemplateSyntaxError, scanner.BlockSyntaxError) as error:
         errors.append(error)
     if errors:
         first = min(errors, key=lambda error: error.lineno or 0)
@@ -75,12 +76,12 @@ def test_the_corpus_has_a_case_for_every_error_code():
     )
 
     assert {case["error"]["code"] for case in recorded if case["error"]} == {
-        sfc.PYTHON_BLOCK_EARLY_CLOSE,
-        sfc.SECOND_BLOCK,
-        sfc.CLOSER_NOT_AT_LINE_START,
-        sfc.UNCLOSED_BLOCK,
-        sfc.TEXT_AFTER_CLOSER,
-        sfc.STRAY_COMMENT_CLOSE,
+        scanner.PYTHON_BLOCK_EARLY_CLOSE,
+        scanner.SECOND_BLOCK,
+        scanner.CLOSER_NOT_AT_LINE_START,
+        scanner.UNCLOSED_BLOCK,
+        scanner.TEXT_AFTER_CLOSER,
+        scanner.STRAY_COMMENT_CLOSE,
     }
 
 

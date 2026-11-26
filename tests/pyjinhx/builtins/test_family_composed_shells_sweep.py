@@ -13,8 +13,6 @@ from pathlib import Path
 
 import pytest
 
-from pyjinhx import discovery
-from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.builtins.pjx_accordion import PJXAccordion
 from pyjinhx.builtins.pjx_accordion_content import PJXAccordionContent
 from pyjinhx.builtins.pjx_accordion_group import PJXAccordionGroup
@@ -44,9 +42,11 @@ from pyjinhx.builtins.pjx_tab_panel import PJXTabPanel
 from pyjinhx.builtins.pjx_tooltip import PJXTooltip
 from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.builtins.pjx_tooltip_trigger import PJXTooltipTrigger
-from pyjinhx.classless import component
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.components import discovery
+from pyjinhx.components.base import BaseComponent, Slot, _pascal_to_snake
+from pyjinhx.components.classless import component
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 FAMILY = (
     PJXCard,
@@ -375,7 +375,7 @@ def test_card_subclass_inherits_template_and_overrides_css(family_dir, subclass_
     # _walk_template returns the last ancestor's candidate *unprobed* (ADR
     # 0007's budget) when nothing nearer owns a template, so _resolve_provenance
     # omits the "template" key entirely rather than naming an unproven owner —
-    # it is never set to PJXCard here. See _component.py::_resolve_provenance.
+    # it is never set to PJXCard here. See base.py::_resolve_provenance.
     assert "template" not in descriptor.provenance
     assert descriptor.provenance["css"] is cls
 

@@ -11,7 +11,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
-from pyjinhx.session import (
+from pyjinhx.rendering.session import (
     _instances,
     _quiet_collisions,
     _quiet_collisions_except,
@@ -24,8 +24,8 @@ from pyjinhx.session import (
 if TYPE_CHECKING:
     # Type-only: naming the spine's own types in a signature must not make this
     # module import its consumers at runtime.
-    from pyjinhx.segments import RenderedLevel
-    from pyjinhx.session import RenderSession
+    from pyjinhx.rendering.segments import RenderedLevel
+    from pyjinhx.rendering.session import RenderSession
 
 logger = logging.getLogger("pyjinhx")
 

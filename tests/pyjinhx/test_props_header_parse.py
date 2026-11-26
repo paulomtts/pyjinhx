@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from jinja2 import TemplateSyntaxError
 
-from pyjinhx.props_header import parse_props_header
+from pyjinhx.components.props_header import parse_props_header
 
 
 def test_source_without_a_header_returns_none():
@@ -109,7 +109,7 @@ def test_slot_names_resolve_to_the_marker_carrying_aliases(
     needs no import path to name them."""
     from typing import get_args
 
-    from pyjinhx._component import PjxSlot
+    from pyjinhx.components.base import PjxSlot
 
     fields = parse_props_header(f"{{#def value: {annotation} #}}")
     assert fields is not None
@@ -122,7 +122,7 @@ def test_slot_names_resolve_to_the_marker_carrying_aliases(
 def test_slot_names_resolve_to_the_component_module_aliases_themselves():
     """Same object as the Python-class API uses, so every consumer that already
     reads PjxSlot metadata keeps working with no translation layer."""
-    from pyjinhx._component import Children, Slot
+    from pyjinhx.components.base import Children, Slot
 
     assert parse_props_header("{#def value: Slot #}") == [("value", Slot, ...)]
     assert parse_props_header("{#def content: Children #}") == [
@@ -241,7 +241,12 @@ def test_parsing_uses_only_the_stdlib():
     import ast as ast_module
     from pathlib import Path
 
-    source = Path(__file__).resolve().parents[2] / "pyjinhx" / "props_header.py"
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "pyjinhx"
+        / "components"
+        / "props_header.py"
+    )
     tree = ast_module.parse(source.read_text(encoding="utf-8"))
     parse_fn = next(
         node
@@ -323,7 +328,7 @@ def test_generic_annotations_resolve_their_arguments(annotation: str, expected: 
 
 
 def test_list_of_slot_keeps_the_slot_alias_as_its_argument():
-    from pyjinhx._component import Slot
+    from pyjinhx.components.base import Slot
 
     assert parse_props_header("{#def rows: list[Slot] #}") == [
         ("rows", list[Slot], ...)
@@ -335,7 +340,7 @@ def test_union_of_two_types_is_a_real_union():
 
 
 def test_attribute_types_resolve_to_pyjinhx_types():
-    from pyjinhx._component import AttrValue, ExtraAttrs
+    from pyjinhx.components.base import AttrValue, ExtraAttrs
 
     assert parse_props_header("{#def attrs: ExtraAttrs, title: AttrValue #}") == [
         ("attrs", ExtraAttrs, ...),

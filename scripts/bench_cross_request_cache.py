@@ -35,8 +35,8 @@ from bench_render_scaling_v2 import (
 
 from pyjinhx.config import PjxSettings, configure_pyjinhx
 from pyjinhx.reactive.backend import InMemoryCacheBackend
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession, request_scope
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession, request_scope
 
 COMPONENT_COUNTS = (50, 200, 1000, 5000)
 REQUESTS = 12

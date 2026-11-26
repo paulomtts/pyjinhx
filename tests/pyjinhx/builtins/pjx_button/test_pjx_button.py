@@ -50,8 +50,8 @@ class TestFields:
             PJXButton(id="b", type="link")  # type: ignore[arg-type]
 
 
-from pyjinhx.rendering import render
-from pyjinhx.session import RenderSession
+from pyjinhx.rendering.pipeline import render
+from pyjinhx.rendering.session import RenderSession
 
 
 @pytest.fixture
@@ -134,8 +134,8 @@ class TestAssets:
         assert PJXButton.__pjx_descriptor__.js_paths == ()
 
 
-from pyjinhx import discovery
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
+from pyjinhx.components import discovery
 
 
 @pytest.fixture
