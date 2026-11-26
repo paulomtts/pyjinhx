@@ -28,7 +28,7 @@ SOURCE = (
 @pytest.fixture(autouse=True)
 def _require_chromium(request: pytest.FixtureRequest) -> None:
     # Function-scoped so a missing browser skips only the tests that ask for
-    # a page, mirroring tests/pyjinhx/client/conftest.py.
+    # a page, mirroring tests/browser/conftest.py.
     if "position" not in set(request.fixturenames):
         return
     pytest.importorskip("playwright")

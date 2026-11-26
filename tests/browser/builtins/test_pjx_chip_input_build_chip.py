@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 SOURCE = (
-    Path(__file__).resolve().parents[4]
+    Path(__file__).resolve().parents[3]
     / "pyjinhx"
     / "builtins"
     / "pjx_chip_input"
