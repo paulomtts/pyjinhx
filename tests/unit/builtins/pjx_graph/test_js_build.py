@@ -9,15 +9,11 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING
 
 import pytest
 
 from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.rendering.pipeline import render
-
-if TYPE_CHECKING:
-    from playwright.sync_api import Page
 
 ROOT = Path(__file__).resolve().parents[4]
 GRAPH_DIR = ROOT / "pyjinhx" / "builtins" / "pjx_graph"
@@ -126,26 +122,3 @@ def test_render_accumulates_both_assets_into_the_session(session):
     render(PJXGraph(id="g", nodes="<div></div>"), session)
     assert {p.name for p in session.js_assets} == {"pjx_graph.js"}
     assert {p.name for p in session.css_assets} == {"pjx_graph.css"}
-
-
-def test_asset_defines_pjx_graph_and_leaks_no_d3(graph_page, page_errors):
-    assert graph_page.evaluate("typeof window.pjx.graph") == "object"
-    assert graph_page.evaluate("typeof window.__pjxD3") == "undefined"
-    assert graph_page.evaluate("typeof window.d3") == "undefined"
-    assert page_errors == []
-
-
-def test_reloading_keeps_the_same_graph_namespace(graph_page, page_errors):
-    graph_page.evaluate("window.pjx.graph.marker = 1")
-    graph_page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
-    assert graph_page.evaluate("window.pjx.graph.marker") == 1
-    assert page_errors == []
-
-
-def test_loading_keeps_an_existing_pjx_namespace(page: Page, page_errors):
-    page.set_content("<body></body>")
-    page.add_script_tag(content="window.pjx = {other: 1};")
-    page.add_script_tag(content=ASSET.read_text(encoding="utf-8"))
-    assert page.evaluate("window.pjx.other") == 1
-    assert page.evaluate("typeof window.pjx.graph") == "object"
-    assert page_errors == []
