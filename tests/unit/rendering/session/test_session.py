@@ -10,6 +10,7 @@ modules that consume them.
 
 import asyncio
 import threading
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -17,7 +18,8 @@ import pytest
 from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering import session as session_module
 from pyjinhx.rendering.pipeline import render
-from tests.unit.rendering.session._session_helpers import _TEMPLATE_DIR
+
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 class PlainBox(BaseComponent):

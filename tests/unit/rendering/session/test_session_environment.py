@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 from pyjinhx.rendering import session as session_module
-from tests.unit.rendering.session._session_helpers import _TEMPLATE_DIR
+
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 def test_render_session_registers_jinja_globals_alongside_the_builtins():
