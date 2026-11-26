@@ -1,11 +1,6 @@
-"""PJXFormField — v0.x field/markup parity on the v2 engine.
+"""PJXFormField: the stylesheet colours and their dark-mode flip, read from computed style in chromium.
 
-Port of the v0.x suite's test_form_field.py. v0.x's golden snapshot
-(the v0.x suite's golden/form_field.html) does not carry over: v2 builtins assert on
-rendered substrings, like every sibling port. The template composes no child
-component tags, so ``content`` is exercised as a plain Slot — a string leg and
-a nested-component leg — with no registry fixture, unlike PJXButton's
-region-loader leg.
+The field and markup checks are in tests/unit/builtins/test_pjx_form_field.py.
 """
 
 from pyjinhx.builtins.pjx_form_field import PJXFormField

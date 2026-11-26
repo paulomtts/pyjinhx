@@ -1,10 +1,7 @@
-"""PJXChipInput — v0.x field/markup parity on the v2 engine.
+"""PJXChipInput: the stylesheet fallbacks and dark-mode theme, and chip building, in chromium.
 
-Port of the v0.x suite's test_chip_input.py. v0.x's golden snapshot
-(the v0.x suite's golden/chip_input.html) does not carry over: v2 builtins assert on
-rendered substrings, like every sibling port. The template composes no child
-component tags — only div/span/input/button — so there is no child-tag render
-coverage here and no registry fixture, unlike PJXButton's region-loader leg."""
+The field and markup checks are in tests/unit/builtins/test_pjx_chip_input.py.
+"""
 
 from __future__ import annotations
 

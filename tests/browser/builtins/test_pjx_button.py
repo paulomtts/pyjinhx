@@ -1,8 +1,6 @@
-"""PJXButton — v0.x field/markup parity on the v2 engine.
+"""PJXButton: the default radius and spacing tokens, read from computed style in chromium.
 
-Port of the v0.x suite's test_button.py. v0.x's golden snapshots
-(the v0.x suite's golden/button_default.html, button_loading.html) do not carry
-over: v2 builtins assert on rendered substrings, like every sibling port.
+The field and markup checks are in tests/unit/builtins/test_pjx_button.py.
 """
 
 from pyjinhx.builtins.pjx_button import PJXButton
