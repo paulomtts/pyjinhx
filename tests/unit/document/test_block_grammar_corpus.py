@@ -14,7 +14,7 @@ from pyjinhx.document.template_blocks import (
     inline_assets,
 )
 
-CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "block_grammar"
+CORPUS = Path(__file__).resolve().parents[2] / "fixtures" / "block_grammar"
 
 
 def _scan(source: str, filename: str) -> tuple[list[dict], dict | None]:

@@ -178,7 +178,9 @@ def test_install_appends_one_finder_at_the_end(hook_state):
     assert sys.meta_path[-1] is finders()[0]
 
 
-def test_reloading_pyjinhx_keeps_one_finder(hook_state):
+def test_reloading_pyjinhx_keeps_one_finder(hook_state, monkeypatch):
+    # reload installs a new package object; put the original back afterwards
+    monkeypatch.setitem(sys.modules, "pyjinhx", pyjinhx)
     importlib.reload(pyjinhx)
     assert len(finders()) == 1
 
