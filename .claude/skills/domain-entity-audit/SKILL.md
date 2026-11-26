@@ -22,10 +22,10 @@ Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 | Concept | Representation | Not |
 |---------|----------------|-----|
 | Reactive UI unit | `ReactiveComponent` (`pyjinhx/reactive/component.py:22`) | loose functions over a plain component |
-| Load DI | `PjxContext` (`pyjinhx/context.py:30`), read via `get_load_context()` (`pyjinhx/session.py:213`) | ad-hoc kwargs threaded through `load()` |
+| Load DI | `PjxContext` (`pyjinhx/context.py:30`), read via `get_load_context()` (`pyjinhx/rendering/session.py:213`) | ad-hoc kwargs threaded through `load()` |
 | HTTP header source | request object read at the edge in `pyjinhx/client/inject.py` | a framework adapter class inside `reactive/` |
 | Load memoization | module functions `cache_get` / `cache_has` / `cache_put` / `invalidate` (`pyjinhx/reactive/cache.py`) over request-scoped session stores | a cache *class* — none exists, and none is planned |
-| Dirtied keys | `dirty()` / `mutates()` (`pyjinhx/reactive/mutations.py`) writing through `add_dirtied()` / `get_dirtied()` (`pyjinhx/session.py:166,158`) | a tracker object with its own lifecycle |
+| Dirtied keys | `dirty()` / `mutates()` (`pyjinhx/reactive/mutations.py`) writing through `add_dirtied()` / `get_dirtied()` (`pyjinhx/rendering/session.py:166,158`) | a tracker object with its own lifecycle |
 | Cross-worker fan-out | **does not exist** — fan-out is in-process and request-scoped (`pyjinhx/reactive/fanout.py`) | any cross-process hub/backend; do not invent one |
 | Client manifest | `MountedManifest` (`pyjinhx/client/inject.py:138`) | loose dict parsing at each call site |
 | Trigger region | `TriggerManifest` (`pyjinhx/client/inject.py:168`) | ad-hoc trigger header parsing |
@@ -38,7 +38,7 @@ Read: [CONVENTIONS.md](../_shared/CONVENTIONS.md).
 
 - **Entity / aggregate** — identity and lifecycle (`ReactiveComponent`)
 - **Value object** — parse result, no mutable identity (`MountedManifest.parse`, `TriggerManifest.parse`, `LoadedAssets.parse` outputs; `FanoutCandidate`)
-- **Request-scoped module** — state lives in the session, API is free functions (`pyjinhx/reactive/cache.py`, `pyjinhx/reactive/mutations.py`, `pyjinhx/registry.py`)
+- **Request-scoped module** — state lives in the session, API is free functions (`pyjinhx/reactive/cache.py`, `pyjinhx/reactive/mutations.py`, `pyjinhx/rendering/registry.py`)
 - **Algorithm** — stateless transform over inputs (`oob_swaps`, `walk_manifest`, `coerce_reactive_key`)
 - **Port / Protocol** — extension point (`IntegrationBackend`, `pyjinhx/integrations/base.py:35`; sole implementation `FastAPIBackend`, `pyjinhx/integrations/fastapi.py:38`)
 
