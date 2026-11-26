@@ -1,4 +1,4 @@
-"""PJXPopoverTrigger renders the clickable element that toggles its popover panel (port of v0.x pyjinhx/builtins/pjx_popover/pjx_popover_trigger.html)."""
+"""PJXPopoverTrigger renders the clickable element that toggles its popover panel (port of v0.x pyjinhx/builtins/ui/pjx_popover/pjx_popover_trigger.html)."""
 
 import pytest
 from pydantic import ValidationError

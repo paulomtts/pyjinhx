@@ -1,4 +1,4 @@
-"""PJXDivider renders a single-root separator (port of v0.x pyjinhx/builtins/pjx_divider)."""
+"""PJXDivider renders a single-root separator (port of v0.x pyjinhx/builtins/ui/pjx_divider)."""
 
 import pytest
 from pydantic import ValidationError

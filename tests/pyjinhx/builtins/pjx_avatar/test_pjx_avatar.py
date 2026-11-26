@@ -1,4 +1,4 @@
-"""PJXAvatar renders an image-or-initials circle (port of v0.x pyjinhx/builtins/pjx_avatar)."""
+"""PJXAvatar renders an image-or-initials circle (port of v0.x pyjinhx/builtins/ui/pjx_avatar)."""
 
 import pytest
 from pydantic import ValidationError

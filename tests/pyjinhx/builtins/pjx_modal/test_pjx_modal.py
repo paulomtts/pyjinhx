@@ -1,4 +1,4 @@
-"""PJXModal renders the single-root <dialog> shell that composes the modal parts (port of v0.x pyjinhx/builtins/pjx_modal)."""
+"""PJXModal renders the single-root <dialog> shell that composes the modal parts (port of v0.x pyjinhx/builtins/ui/pjx_modal)."""
 
 import dataclasses
 

@@ -1,4 +1,4 @@
-"""PJXAccordionGroup renders the wrapper that scopes exclusive/multi behavior (port of v0.x pyjinhx/builtins/pjx_accordion_group)."""
+"""PJXAccordionGroup renders the wrapper that scopes exclusive/multi behavior (port of v0.x pyjinhx/builtins/ui/pjx_accordion_group)."""
 
 import dataclasses
 

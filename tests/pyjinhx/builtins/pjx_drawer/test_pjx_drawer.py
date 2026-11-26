@@ -1,4 +1,4 @@
-"""PJXDrawer renders the single-root <dialog> shell that composes the drawer parts (port of v0.x pyjinhx/builtins/pjx_drawer)."""
+"""PJXDrawer renders the single-root <dialog> shell that composes the drawer parts (port of v0.x pyjinhx/builtins/ui/pjx_drawer)."""
 
 import dataclasses
 

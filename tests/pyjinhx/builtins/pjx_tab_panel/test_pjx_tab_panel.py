@@ -1,4 +1,4 @@
-"""PJXTabPanel renders the hidden-by-default panel a tab reveals (port of v0.x pyjinhx/builtins/pjx_tab_panel)."""
+"""PJXTabPanel renders the hidden-by-default panel a tab reveals (port of v0.x pyjinhx/builtins/ui/pjx_tab_panel)."""
 
 import pytest
 

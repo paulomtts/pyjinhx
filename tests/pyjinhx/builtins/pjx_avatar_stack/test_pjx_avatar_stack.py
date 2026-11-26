@@ -1,4 +1,4 @@
-"""PJXAvatarStack renders overlapping avatar pills (port of v0.x pyjinhx/builtins/pjx_avatar_stack)."""
+"""PJXAvatarStack renders overlapping avatar pills (port of v0.x pyjinhx/builtins/ui/pjx_avatar_stack)."""
 
 import pytest
 from pydantic import ValidationError

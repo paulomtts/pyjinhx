@@ -1,4 +1,4 @@
-"""PJXPopoverPanel renders the hidden-by-default floating panel a trigger reveals (port of v0.x pyjinhx/builtins/pjx_popover/pjx_popover_panel.html)."""
+"""PJXPopoverPanel renders the hidden-by-default floating panel a trigger reveals (port of v0.x pyjinhx/builtins/ui/pjx_popover/pjx_popover_panel.html)."""
 
 import pytest
 from pydantic import ValidationError

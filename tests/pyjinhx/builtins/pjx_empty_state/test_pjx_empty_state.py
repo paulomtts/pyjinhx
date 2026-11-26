@@ -1,4 +1,4 @@
-"""PJXEmptyState renders a single-root empty state with suggestion chips (port of v0.x pyjinhx/builtins/pjx_empty_state)."""
+"""PJXEmptyState renders a single-root empty state with suggestion chips (port of v0.x pyjinhx/builtins/ui/pjx_empty_state)."""
 
 import pytest
 from pydantic import ValidationError

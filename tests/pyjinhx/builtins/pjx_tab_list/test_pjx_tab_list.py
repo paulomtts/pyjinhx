@@ -1,4 +1,4 @@
-"""PJXTabList renders the role="tablist" row of a tab group (port of v0.x pyjinhx/builtins/pjx_tab_list)."""
+"""PJXTabList renders the role="tablist" row of a tab group (port of v0.x pyjinhx/builtins/ui/pjx_tab_list)."""
 
 import pytest
 

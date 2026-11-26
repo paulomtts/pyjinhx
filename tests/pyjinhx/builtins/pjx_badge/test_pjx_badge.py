@@ -1,4 +1,4 @@
-"""PJXBadge renders a single-root themeable label span (port of v0.x pyjinhx/builtins/pjx_badge)."""
+"""PJXBadge renders a single-root themeable label span (port of v0.x pyjinhx/builtins/ui/pjx_badge)."""
 
 import re
 

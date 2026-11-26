@@ -1,4 +1,4 @@
-"""PJXTooltip renders the positioned root shell that anchors a trigger to its tip (port of v0.x pyjinhx/builtins/pjx_tooltip/pjx_tooltip.py)."""
+"""PJXTooltip renders the positioned root shell that anchors a trigger to its tip (port of v0.x pyjinhx/builtins/ui/pjx_tooltip/pjx_tooltip.py)."""
 
 import pytest
 from pydantic import ValidationError

@@ -1,4 +1,4 @@
-"""PJXModalFooter renders a single-root modal region (port of v0.x pyjinhx/builtins/pjx_modal_footer)."""
+"""PJXModalFooter renders a single-root modal region (port of v0.x pyjinhx/builtins/ui/pjx_modal_footer)."""
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""PJXAccordion renders the single-root <details> shell of the accordion family (port of v0.x pyjinhx/builtins/pjx_accordion)."""
+"""PJXAccordion renders the single-root <details> shell of the accordion family (port of v0.x pyjinhx/builtins/ui/pjx_accordion)."""
 
 import dataclasses
 

@@ -1,4 +1,4 @@
-"""PJXAccordionContent renders the accordion body region (port of v0.x pyjinhx/builtins/pjx_accordion_content)."""
+"""PJXAccordionContent renders the accordion body region (port of v0.x pyjinhx/builtins/ui/pjx_accordion_content)."""
 
 import dataclasses
 

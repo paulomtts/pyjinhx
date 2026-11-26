@@ -1,4 +1,4 @@
-"""PJXCardFooter renders a single-root card footer (port of v0.x pyjinhx/builtins/pjx_card_footer)."""
+"""PJXCardFooter renders a single-root card footer (port of v0.x pyjinhx/builtins/ui/pjx_card_footer)."""
 
 import pytest
 

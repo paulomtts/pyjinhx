@@ -1,4 +1,4 @@
-"""PJXSpinner renders a loading indicator (port of v0.x pyjinhx/builtins/pjx_spinner)."""
+"""PJXSpinner renders a loading indicator (port of v0.x pyjinhx/builtins/ui/pjx_spinner)."""
 
 import pytest
 from pydantic import ValidationError

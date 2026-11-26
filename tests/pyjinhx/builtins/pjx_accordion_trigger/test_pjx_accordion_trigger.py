@@ -1,4 +1,4 @@
-"""PJXAccordionTrigger renders the <summary> row with its chevron icon (port of v0.x pyjinhx/builtins/pjx_accordion_trigger)."""
+"""PJXAccordionTrigger renders the <summary> row with its chevron icon (port of v0.x pyjinhx/builtins/ui/pjx_accordion_trigger)."""
 
 import dataclasses
 

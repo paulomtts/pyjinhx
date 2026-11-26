@@ -1,4 +1,4 @@
-"""PJXCardBody renders a single-root card region (port of v0.x pyjinhx/builtins/pjx_card_body)."""
+"""PJXCardBody renders a single-root card region (port of v0.x pyjinhx/builtins/ui/pjx_card_body)."""
 
 import pytest
 

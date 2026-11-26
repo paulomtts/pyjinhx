@@ -1,4 +1,4 @@
-"""PJXSkeleton renders a single-root loading placeholder (port of v0.x pyjinhx/builtins/pjx_skeleton)."""
+"""PJXSkeleton renders a single-root loading placeholder (port of v0.x pyjinhx/builtins/ui/pjx_skeleton)."""
 
 import pytest
 from pydantic import ValidationError

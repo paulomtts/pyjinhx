@@ -1,4 +1,4 @@
-"""PJXTooltipTrigger renders the focusable element that reveals its tooltip tip (port of v0.x pyjinhx/builtins/pjx_tooltip_trigger/pjx_tooltip_trigger.py)."""
+"""PJXTooltipTrigger renders the focusable element that reveals its tooltip tip (port of v0.x pyjinhx/builtins/ui/pjx_tooltip_trigger/pjx_tooltip_trigger.py)."""
 
 import pytest
 

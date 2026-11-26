@@ -1,4 +1,4 @@
-"""PJXTab renders one tab trigger, optionally with an icon and a close button (port of v0.x pyjinhx/builtins/pjx_tab)."""
+"""PJXTab renders one tab trigger, optionally with an icon and a close button (port of v0.x pyjinhx/builtins/ui/pjx_tab)."""
 
 import pytest
 

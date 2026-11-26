@@ -1,4 +1,4 @@
-"""PJXCardHeader renders a single-root header with a title shortcut (port of v0.x pyjinhx/builtins/pjx_card_header)."""
+"""PJXCardHeader renders a single-root header with a title shortcut (port of v0.x pyjinhx/builtins/ui/pjx_card_header)."""
 
 import pytest
 

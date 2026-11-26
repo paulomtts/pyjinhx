@@ -1,4 +1,4 @@
-"""PJXCard renders the single-root <article> shell that composes the card parts (port of v0.x pyjinhx/builtins/pjx_card)."""
+"""PJXCard renders the single-root <article> shell that composes the card parts (port of v0.x pyjinhx/builtins/ui/pjx_card)."""
 
 import pytest
 from pydantic import ValidationError
