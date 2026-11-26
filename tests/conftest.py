@@ -25,14 +25,8 @@ def pytest_collection_modifyitems(items):
 
 
 @pytest.fixture
-def render_session():
-    """Provide a RenderSession for tests."""
-    return RenderSession()
-
-
-@pytest.fixture
 def session():
-    """A plain RenderSession, for the tests that do not define their own."""
+    """Provide a RenderSession for tests."""
     return RenderSession()
 
 
