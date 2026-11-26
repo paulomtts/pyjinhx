@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+SCRIPTS_DIR = Path(__file__).parents[2] / "scripts"
 BENCH_SCRIPTS = sorted(p.name for p in SCRIPTS_DIR.glob("bench_*.py"))
 
 # A smoke run is one point per sweep; the slowest is well under a second. The

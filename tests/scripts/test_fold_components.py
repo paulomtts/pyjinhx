@@ -19,7 +19,7 @@ from pyjinhx.components import discovery
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
-SCRIPT = Path(__file__).parent.parent / "scripts" / "fold_components.py"
+SCRIPT = Path(__file__).parents[2] / "scripts" / "fold_components.py"
 
 
 def load_script():
