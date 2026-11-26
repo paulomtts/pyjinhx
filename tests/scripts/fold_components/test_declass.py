@@ -7,7 +7,7 @@ import pytest
 
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
-from tests.scripts._fold_helpers import render_class, run, write
+from tests.scripts.fold_components._helpers import render_class, run, write
 
 # --- declass ----------------------------------------------------------------
 

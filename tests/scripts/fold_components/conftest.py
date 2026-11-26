@@ -1,4 +1,4 @@
-"""Fixtures shared by the split test files in this folder."""
+"""Registry reset for the fold_components tests."""
 
 import pytest
 

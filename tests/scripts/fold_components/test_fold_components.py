@@ -9,7 +9,7 @@ import textwrap
 
 import pytest
 
-from tests.scripts._fold_helpers import (
+from tests.scripts.fold_components._helpers import (
     CARD_CSS,
     CARD_PJX,
     CARD_PY,

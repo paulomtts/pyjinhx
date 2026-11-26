@@ -12,7 +12,7 @@ import pytest
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession, accumulate_assets
 
-SCRIPT = Path(__file__).parents[2] / "scripts" / "fold_components.py"
+SCRIPT = Path(__file__).parents[3] / "scripts" / "fold_components.py"
 
 
 def load_script():
