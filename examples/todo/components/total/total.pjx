@@ -12,6 +12,7 @@ class Total(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
     def load(cls, ctx: TodoAppContext | None = None) -> "Total":
         """Read the total todo count from the store."""
+        assert ctx is not None  # the app configures a context_factory
         return cls(count=ctx.store.total())
 #}
 <span class="total">{{ count }} total</span>

@@ -12,6 +12,7 @@ class Counter(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
     def load(cls, ctx: TodoAppContext | None = None) -> "Counter":
         """Read the open-todo count from the store."""
+        assert ctx is not None  # the app configures a context_factory
         return cls(remaining=ctx.store.remaining())
 #}
 <span class="counter">{{ remaining }} left</span>

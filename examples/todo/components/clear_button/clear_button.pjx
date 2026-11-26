@@ -12,6 +12,7 @@ class ClearButton(ReactiveComponent, react={Keys.TODOS}):
     @classmethod
     def load(cls, ctx: TodoAppContext | None = None) -> "ClearButton":
         """Read the completed-todo count from the store."""
+        assert ctx is not None  # the app configures a context_factory
         return cls(completed=ctx.store.completed())
 #}
 <button class="clear" hx-post="/todos/clear-completed" hx-target="#list" hx-swap="outerHTML"

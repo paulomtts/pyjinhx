@@ -17,6 +17,7 @@ class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
         ``ItemRow.load`` is used rather than a field because the renderer only
         auto-loads children it builds from tags, not instances assigned to fields.
         """
+        assert ctx is not None  # the app configures a context_factory
         rows = []
         for todo in ctx.store.all_todos():
             row = ItemRow.load(todo.id)

@@ -23,6 +23,7 @@ class ItemRow(ReactiveComponent, react={Keys.TODOS}):
         `KeyError` subclasses) out of `load()` is what tells the fan-out walk the
         region is gone, so it emits a delete swap instead of an empty row.
         """
+        assert ctx is not None  # the app configures a context_factory
         todo = ctx.store.get(todo_id)
         return cls(todo_id=todo_id, title=todo.text, done=todo.done)
 #}
