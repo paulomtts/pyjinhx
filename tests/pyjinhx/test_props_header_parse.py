@@ -365,7 +365,7 @@ def test_a_default_outside_the_three_forms_says_what_is_allowed(default: str):
 
 
 def test_parsing_a_dotted_default_imports_nothing():
-    module = "tests.pyjinhx.header_import_probe"
+    module = "tests.fixtures.header_import_probe"
     sys.modules.pop(module, None)
     parse_props_header(
         f"{{#def tone: str = {module}.Probe.ON, at: str = {module}.f() #}}"

@@ -526,7 +526,7 @@ def test_a_header_declaring_id_builds_a_class_that_requires_it(tmp_path):
 
 def test_a_headed_orphan_resolves_its_dotted_names(tmp_path):
     write_template(
-        tmp_path, "note", "{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE #}"
+        tmp_path, "note", "{#def size: int = tests.fixtures.header_names.PAGE_SIZE #}"
     )
     discovery.build_registry(tmp_path, [])
 

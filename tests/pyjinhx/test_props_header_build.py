@@ -16,7 +16,7 @@ import pytest
 
 from pyjinhx.components.base import BaseComponent, ClassDescriptor, _OpenComponent
 from pyjinhx.components.props_header import build_component_class, parse_props_header
-from tests.pyjinhx import header_names
+from tests.fixtures import header_names
 
 
 def test_generated_class_subclasses_the_open_model_base():
@@ -267,7 +267,7 @@ def test_id_may_only_be_a_required_str(header: str):
     "annotation, expected",
     [
         ("datetime.datetime", datetime.datetime),
-        ("tests.pyjinhx.header_names.Tone", header_names.Tone),
+        ("tests.fixtures.header_names.Tone", header_names.Tone),
         ("list[uuid.UUID]", list[uuid.UUID]),
         ("tuple[uuid.UUID, ...]", tuple[uuid.UUID, ...]),
         ("uuid.UUID | None", uuid.UUID | None),
@@ -279,7 +279,7 @@ def test_dotted_annotation_resolves_by_import(annotation: str, expected: Any):
 
 
 def test_dotted_enum_annotation_coerces_its_value():
-    cls = _build("{#def tone: tests.pyjinhx.header_names.Tone #}")
+    cls = _build("{#def tone: tests.fixtures.header_names.Tone #}")
     instance = cls(tone="warn")  # pyright: ignore[reportCallIssue]
     assert instance.tone is header_names.Tone.WARN  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -287,7 +287,7 @@ def test_dotted_enum_annotation_coerces_its_value():
 def test_dotted_names_import_when_the_class_is_built_not_when_parsed():
     """Parsing runs at registration, for every template, while the app's own
     modules may still be importing; an import there could find one half-built."""
-    module = "tests.pyjinhx.header_import_probe"
+    module = "tests.fixtures.header_import_probe"
     sys.modules.pop(module, None)
     fields = parse_props_header(f"{{#def value: {module}.Probe | None #}}")
     assert module not in sys.modules
@@ -298,14 +298,14 @@ def test_dotted_names_import_when_the_class_is_built_not_when_parsed():
 
 
 def test_dotted_default_is_the_named_constant():
-    cls = _build("{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE #}")
+    cls = _build("{#def size: int = tests.fixtures.header_names.PAGE_SIZE #}")
     assert cls.model_fields["size"].default == header_names.PAGE_SIZE
 
 
 def test_dotted_default_may_be_an_enum_member():
     cls = _build(
-        "{#def tone: tests.pyjinhx.header_names.Tone"
-        " = tests.pyjinhx.header_names.Tone.INFO #}"
+        "{#def tone: tests.fixtures.header_names.Tone"
+        " = tests.fixtures.header_names.Tone.INFO #}"
     )
     assert cls().tone is header_names.Tone.INFO  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -319,7 +319,7 @@ def test_dotted_call_default_is_a_per_instance_factory():
 
 
 def test_dotted_factory_result_is_not_shared_between_instances():
-    cls = _build("{#def tags: list = tests.pyjinhx.header_names.make_tags() #}")
+    cls = _build("{#def tags: list = tests.fixtures.header_names.make_tags() #}")
     first, second = cls(), cls()
     assert first.tags == ["new"]  # pyright: ignore[reportAttributeAccessIssue]
     assert first.tags is not second.tags  # pyright: ignore[reportAttributeAccessIssue]
@@ -330,8 +330,8 @@ def test_dotted_factory_result_is_not_shared_between_instances():
     [
         ("{#def tone: no_such_pkg.Tone #}", "no_such_pkg.Tone", ImportError),
         (
-            "{#def size: int = tests.pyjinhx.header_names.NOPE #}",
-            "tests.pyjinhx.header_names.NOPE",
+            "{#def size: int = tests.fixtures.header_names.NOPE #}",
+            "tests.fixtures.header_names.NOPE",
             AttributeError,
         ),
         (
@@ -358,7 +358,7 @@ def test_a_dotted_name_that_does_not_import_names_the_prop_and_the_path(
 def test_a_dotted_factory_that_is_not_callable_is_rejected_at_build():
     """Caught here rather than as a TypeError on the first render."""
     fields = parse_props_header(
-        "{#def size: int = tests.pyjinhx.header_names.PAGE_SIZE() #}"
+        "{#def size: int = tests.fixtures.header_names.PAGE_SIZE() #}"
     )
     assert fields is not None
     with pytest.raises(ValueError, match="'size'.*not callable"):
