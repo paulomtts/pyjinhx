@@ -60,7 +60,7 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
 
     ``load()`` writes ``rows`` and ``table`` as side effects rather than
     returning them: the engine binds no special "load result" variable into
-    the template context (checked against render.py/render_context.py — a
+    the template context (checked against pipeline.py/template_context.py — a
     ReactiveComponent's own fields are what the template sees), so the data
     has to land on plain fields for the template to read.
 

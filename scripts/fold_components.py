@@ -703,7 +703,7 @@ def already_has_block(module: Module, pjx: Path, text: str) -> str:
 def needs_pyjinhx_import(path: Path) -> str | None:
     """A reminder when nothing is known to import pyjinhx before the module at
     ``path``: the top package's ``__init__.py`` should, found as
-    `sfc.module_name_for` finds it."""
+    `scanner.module_name_for` finds it."""
     top = package_root(path.parent)
     if top is None:
         return (

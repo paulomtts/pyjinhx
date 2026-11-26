@@ -587,8 +587,8 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     ),
     # render_cache holds the tier-2 render-cache key derivation plus the
     # store/restore/replay primitives built on top of it. It reaches down into
-    # base only for the BaseComponent annotation, reads the class
-    # descriptor off the class rather than importing base.py, and reads
+    # components.base only for the BaseComponent annotation (it reads the class
+    # descriptor off the class, so it never imports ClassDescriptor), and reads
     # the CacheBackend protocol/MISS sentinel and RenderedLevel/ChildRef to
     # store and shape-check a level. The RenderSession reference for asset
     # replay is TYPE_CHECKING-only, but internal_imports() walks the whole

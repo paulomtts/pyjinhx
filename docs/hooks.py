@@ -177,7 +177,7 @@ def on_post_build(config):
         session = RenderSession()
         session.on_rendered.append(accumulate_assets)
         # BaseComponent.render() (what every factory calls, with no argument)
-        # is the top-level rendering.render() API, which always appends its
+        # is the top-level pipeline.render() API, which always appends its
         # own emit_assets(session) call to whatever it returns. A demo whose
         # factory renders N components against this one shared session would
         # otherwise bake N (growing, duplicate) copies of the same assets

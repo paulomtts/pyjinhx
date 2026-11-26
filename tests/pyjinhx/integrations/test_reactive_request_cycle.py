@@ -513,8 +513,8 @@ def test_lower_layers_do_not_import_the_wiring_layer():
     def imported_module_names(source: str) -> set[str]:
         """Every dotted module name a real ``import``/``from`` statement names.
 
-        AST-based rather than a substring scan: ``from pyjinhx import
-        discovery, registry`` never spells the substring "pyjinhx.rendering.registry",
+        AST-based rather than a substring scan: ``from pyjinhx.rendering
+        import registry`` never spells the substring "pyjinhx.rendering.registry",
         so a text search over the source would silently miss exactly the
         import shape this codebase's lower layers use.
         """

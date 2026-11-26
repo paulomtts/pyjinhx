@@ -185,7 +185,7 @@ def test_a_str_item_is_escaped_plain_text_on_purpose(dropdown_session):
     """A raw-HTML string item is data, not markup — it renders escaped, by design.
 
     ADR 0003 makes the *slot's own* string form raw-HTML-capable, but a list
-    entry is a collection member, so render_context._wrap_slot_value leaves it
+    entry is a collection member, so template_context._wrap_slot_value leaves it
     to Jinja's autoescape. This is the documented contract, not the #695 bug:
     the bug was docs/demos/interaction.py passing markup where text is meant.
     """

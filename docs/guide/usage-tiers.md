@@ -7,7 +7,7 @@ The Guide is organized in two halves that map onto these tiers:
 - **Basic** (Tier 1) — declare components, compose them with PascalCase tags and nesting, and let asset collection bundle their CSS/JS. No framework wiring. This is all you need for templating and server-rendered HTML.
 - **Advanced** (Tiers 2–4) — request scoping, reactive HTMX, configuration, loading states, and integrations (FastAPI, HTMX, …). Everything where the framework wires behavior for you.
 
-**Source layout:** the engine is a mostly flat package — modules live directly under `pyjinhx/` (e.g. `_component`, `rendering`, `responses`, `session`, `config`), with the reactive layer as the one subpackage (`pyjinhx.reactive`). Public imports stay on `from pyjinhx import ...`.
+**Source layout:** the engine is split by role — `pyjinhx.document` (reading a pjx document), `pyjinhx.components` (what a component class is and how it comes to exist), `pyjinhx.rendering` (one request's render), `pyjinhx.reactive` and `pyjinhx.integrations` — with the wiring modules (`config`, `context`, `dev`) and the `manifest` / `stubgen` command-line modules at the top level. Public imports stay on `from pyjinhx import ...`.
 
 ## Tier 1 — Components
 

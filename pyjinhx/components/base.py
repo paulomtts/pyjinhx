@@ -4,10 +4,10 @@ All components reject undeclared kwargs at construction time. This keeps the cor
 lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
 Imports pydantic at module scope. Also holds ClassDescriptor, the frozen
-per-class fact sheet resolved once per class. The render() convenience method also reaches upward into pipeline.py and session.py,
-but only from inside the method body — a module-level edge to pipeline.py would
-be a circular import, since pipeline.py imports BaseComponent at import time. The
-import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
+per-class fact sheet resolved once per class. The render() convenience method
+also reaches upward into pipeline.py and session.py, but only from inside the
+method body — a module-level edge to pipeline.py would be a circular import,
+since pipeline.py imports BaseComponent at import time. The import graph is enforced statically by tests/pyjinhx/test_import_graph.py.
 """
 
 import itertools

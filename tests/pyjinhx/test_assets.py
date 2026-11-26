@@ -299,4 +299,4 @@ def test_is_builtin_asset_false_for_a_pyjinhx_module_outside_builtins():
     import pyjinhx
     from pyjinhx.rendering.assets import _is_builtin_asset
 
-    assert _is_builtin_asset(Path(pyjinhx.__file__).parent / "assets.py") is False
+    assert _is_builtin_asset(Path(pyjinhx.__file__).parent / "rendering" / "assets.py") is False
