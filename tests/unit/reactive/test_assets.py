@@ -203,7 +203,7 @@ def test_a_descendant_rendered_during_the_walk_gets_its_assets_delivered(
         # cast(Any, None), not a bare None: emit_rendered's component parameter
         # is typed BaseComponent, and basedpyright standard mode rejects None
         # there — the existing on_rendered tests use the same cast for the same
-        # reason (tests/pyjinhx/test_session.py).
+        # reason (tests/unit/rendering/session/test_session.py).
         session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
         return [candidate("clean")]
 
@@ -329,7 +329,7 @@ def test_none_mode_emits_nothing_even_when_the_walk_accumulated_assets(
         # cast(Any, None), not a bare None: emit_rendered's component parameter
         # is typed BaseComponent, and basedpyright standard mode rejects None
         # there — the existing on_rendered tests use the same cast for the same
-        # reason (tests/pyjinhx/test_session.py).
+        # reason (tests/unit/rendering/session/test_session.py).
         session.emit_rendered(cast(Any, None), descendant_level(child_css, child_js))
         return [candidate("clean")]
 

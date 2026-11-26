@@ -46,7 +46,7 @@ class Keys(MutationKey):
     """The reactive keys this module's tests dirty.
 
     ``dirty()``/``@mutates`` reject a bare string (see
-    ``tests/pyjinhx/reactive/test_reactive_mutations.py::test_mutates_rejects_a_plain_string``
+    ``tests/unit/reactive/test_mutations.py::test_mutates_rejects_a_plain_string``
     on origin/master) — every key has to be a ``MutationKey`` member or a
     ``reactive_key()`` value, so a plain ``"cycle"`` literal would raise
     ``TypeError`` at class-body/call time instead of dirtying anything.

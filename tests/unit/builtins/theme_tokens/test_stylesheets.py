@@ -12,7 +12,7 @@ from pyjinhx.client import read_pjx_theme_css
 REPO_ROOT = Path(__file__).parents[4]
 THEME_SHEET = "pyjinhx/client/pjx_theme.css"
 
-# Copied from tests/pyjinhx/client/test_pjx_theme.py: the tests tree has no
+# Copied from tests/unit/client/test_client.py: the tests tree has no
 # __init__.py files, so test modules cannot import each other reliably.
 ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
 DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")

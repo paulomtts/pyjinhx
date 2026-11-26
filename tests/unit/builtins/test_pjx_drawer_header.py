@@ -44,7 +44,7 @@ def test_title_renders_the_title_span(drawer_header_session):
 
 
 def test_title_golden_shape(drawer_header_session):
-    """Exact markup, ported from tests/unit/golden/drawer_header_title.html."""
+    """Exact markup, ported from the v0.x suite's golden/drawer_header_title.html."""
     html = render(PJXDrawerHeader(id="g", title="Settings"), drawer_header_session)
     assert html == (
         '<header id="g" class="pjx-drawer__header">'

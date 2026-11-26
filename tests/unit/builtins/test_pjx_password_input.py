@@ -1,7 +1,7 @@
 """PJXPasswordInput — v0.x field/markup parity on the v2 engine.
 
-Port of tests/unit/test_password_input.py. v0.x's golden snapshot
-(tests/unit/golden/password_input.html) does not carry over: v2 builtins assert
+Port of the v0.x suite's test_password_input.py. v0.x's golden snapshot
+(the v0.x suite's golden/password_input.html) does not carry over: v2 builtins assert
 on rendered substrings, like every sibling port. The template composes no child
 component tags — only div/input/button/span — so there is no child-tag render
 coverage here and no registry fixture.

@@ -149,7 +149,7 @@ def test_extra_attrs_surface_on_the_root(drawer_session):
 class DrawerHost(BaseComponent):
     """A three-slot host, so header/body/footer compose in one tree without string joins.
 
-    Mirrors ModalHost in tests/pyjinhx/builtins/pjx_modal/test_pjx_modal.py: a
+    Mirrors ModalHost in tests/unit/builtins/test_pjx_modal.py: a
     bare `{{ content }}` interpolation never iterates a list, so three named
     slots is the proven multi-child shape.
     """

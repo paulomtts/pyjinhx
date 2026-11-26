@@ -1,6 +1,6 @@
 """PJXSegmentedControl — v0.x field/markup parity on the v2 engine.
 
-Partial port of tests/unit/test_toggle_segmented.py: only the
+Partial port of the v0.x suite's test_toggle_segmented.py: only the
 ``test_segmented_control_*`` cases carry over here. The PJXToggleSwitch cases in
 that same file belong to #514. v0.x's golden-snapshot comparison does not carry
 over either — v2 builtins assert on rendered substrings, like every sibling

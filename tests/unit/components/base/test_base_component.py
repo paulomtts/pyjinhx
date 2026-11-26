@@ -568,7 +568,7 @@ def test_component_module_does_not_import_above_itself():
     method-body-only imports of render.py/session.py inside
     ``BaseComponent.render()`` (#643), which exist because render.py imports
     BaseComponent at module scope and a module-level edge back would be a real
-    cycle. tests/pyjinhx/test_import_graph.py is the whole-package view that
+    cycle. tests/packaging/test_import_graph.py is the whole-package view that
     enforces base.py is the *only* module allowed those edges."""
     tree = ast.parse(inspect.getsource(pyjinhx.components.base))
     for node in ast.walk(tree):

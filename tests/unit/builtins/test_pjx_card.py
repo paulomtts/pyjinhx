@@ -74,10 +74,10 @@ class CardHost(BaseComponent):
     """A three-slot host, so header/body/footer compose in one tree without string joins.
 
     Not a list-valued single `content` slot: a bare `{{ content }}` interpolation
-    never iterates a list (confirmed against tests/pyjinhx/test_slot_collections.py's
+    never iterates a list (confirmed against tests/unit/rendering/template_context/test_slot_collections.py's
     fixture templates, which all use an explicit `{% for %}` — none of pjx_card's
     templates do). Three named slots is the proven multi-child shape, matching
-    `Panel` in tests/pyjinhx/builtins/test_family_display_primitives_sweep.py.
+    `Panel` in tests/unit/builtins/families/test_display_primitives.py.
     """
 
     head: Slot = ""

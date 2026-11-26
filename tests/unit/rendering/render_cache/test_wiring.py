@@ -331,7 +331,7 @@ def test_a_second_render_answers_from_the_cache_without_rendering_the_template(
 def _accumulating_session() -> RenderSession:
     """A fresh RenderSession with the asset accumulator wired to on_rendered.
 
-    accumulate_assets is opt-in per session (see tests/pyjinhx/test_assets.py's
+    accumulate_assets is opt-in per session (see tests/unit/rendering/assets/test_accumulation.py's
     fixture of the same shape) — a bare RenderSession() never accumulates on a
     live render either, so a test proving a hit "replays what a live render
     would have done" has to compare against a session that actually would.

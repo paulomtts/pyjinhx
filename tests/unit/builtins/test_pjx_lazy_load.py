@@ -150,7 +150,7 @@ class TestAssets:
 
     def test_render_accumulates_both_assets_into_the_session(self, session):
         # RenderSession does not auto-subscribe accumulate_assets — verified
-        # against tests/pyjinhx/test_asset_emission.py, which always does
+        # against tests/unit/rendering/assets/test_emission.py, which always does
         # `session.on_rendered.append(accumulate_assets)` explicitly before
         # asserting on css_assets/js_assets. A bare render() leaves both sets
         # empty regardless of the descriptor's asset paths.

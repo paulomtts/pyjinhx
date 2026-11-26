@@ -1,6 +1,6 @@
 """PJXResizableHandle — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x tests/unit/test_resizable_parts.py (handle half).
+Ported from v0.x the v0.x suite's test_resizable_parts.py (handle half).
 """
 
 import pytest

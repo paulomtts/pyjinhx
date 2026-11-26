@@ -39,7 +39,7 @@ Every pyjinhx builtin follows the same contract, so knowing one means knowing al
    fields (titles, labels, descriptions) are plain `str` and stay escaped; raw-HTML/icon/component
    fields are `Slot` (or the children field). A field is never typed `str | BaseComponent` unless
    it is a slot — otherwise a component renders raw while a string escapes, an inconsistency that
-   is also an XSS footgun. `tests/pyjinhx/test_slot_type_v2.py` enforces this.
+   is also an XSS footgun. `tests/unit/rendering/template_context/test_slot_type.py` enforces this.
 
 ## Events and hooks
 

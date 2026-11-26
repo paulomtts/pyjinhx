@@ -194,7 +194,7 @@ class _AssetShell(BaseComponent):
 def _accumulating_session() -> RenderSession:
     """A fresh session wired the way the live asset path is.
 
-    accumulate_assets is opt-in per session (see tests/pyjinhx/test_assets.py):
+    accumulate_assets is opt-in per session (see tests/unit/rendering/assets/test_accumulation.py):
     a bare RenderSession() emits nothing on a live render either, so a session
     that never subscribed proves nothing about a hit.
     """

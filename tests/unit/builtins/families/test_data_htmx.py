@@ -72,12 +72,12 @@ class TableRegion(ReactiveComponent, react=(ROWS,)):
     autoescape anywhere in the L0/L1 pipeline yet (template_context.py's
     ``build_context`` only wraps *component-valued* Slot fields; a plain
     string Slot field passes through untouched and Jinja's ``{{ content }}``
-    escapes it). ``tests/pyjinhx/test_render_context.py`` names this
+    escapes it). ``tests/unit/rendering/template_context/test_build_context.py`` names this
     directly: "String-valued Slot fields pass as-is (will be wrapped in
     Markup by L1)" — a documented, deferred gap, not something #531 owns.
     Composing ``table`` as a live component tree instead uses the officially
     working path (ComponentNode + the Jinja finalize/splice machinery,
-    exactly what ``tests/pyjinhx/test_direct_nesting.py`` covers) and avoids
+    exactly what ``tests/unit/rendering/template_context/test_direct_nesting.py`` covers) and avoids
     it entirely. The corollary is that ``content`` on ``PJXTable``/
     ``PJXTableBody`` holds exactly one value each — multiple sibling rows
     are out of reach for either composition route today — so this harness

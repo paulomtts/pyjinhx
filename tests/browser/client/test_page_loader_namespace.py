@@ -23,7 +23,7 @@ def _load(page):
     # component's own script), matching production load order.
     # RenderSession does not auto-subscribe accumulate_assets — it must be
     # registered explicitly for js_assets/css_assets to populate (see
-    # tests/pyjinhx/builtins/test_pjx_page_loader.py).
+    # tests/unit/builtins/test_pjx_page_loader.py).
     session = RenderSession()
     session.on_rendered.append(accumulate_assets)
     inject_runtime(session)

@@ -1,6 +1,6 @@
 """PJXCarousel — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x tests/unit/test_carousel.py (carousel half) and goldens
+Ported from v0.x the v0.x suite's test_carousel.py (carousel half) and goldens
 carousel_{multi,single,empty,no_loop,autoplay}.html. Slot strings are escaped
 here, matching measured pjx_alert/pjx_notification behavior -- tracked as a
 pre-existing gap, not fixed by #534.

@@ -1,7 +1,7 @@
 """PJXToastHost — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x tests/unit/test_toast_host.py, checked against
-tests/unit/golden/toast_host.html. The toasts themselves are created client
+Ported from v0.x the v0.x suite's test_toast_host.py, checked against
+the v0.x suite's golden/toast_host.html. The toasts themselves are created client
 side by pjx_toast_host.js; the server renders only the empty host container.
 """
 

@@ -37,7 +37,7 @@ LIGHT_SURFACE = "#ffffff"
 DARK_SURFACE = "#18181b"
 
 
-# Copied from tests/pyjinhx/builtins/pjx_chart/conftest.py: that conftest only
+# Copied from tests/browser/conftest.py: that conftest only
 # covers its own directory, and the tests tree has no __init__.py files, so
 # test modules cannot import each other reliably.
 @pytest.fixture(autouse=True)

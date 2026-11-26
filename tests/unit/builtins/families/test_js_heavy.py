@@ -1,7 +1,7 @@
 """The JS-heavy tail exercised together in one render.
 
 Each component here is unit-tested by its own module under
-``tests/pyjinhx/builtins/pjx_*/``; this file only asserts the cross-cutting
+``tests/unit/builtins/``; this file only asserts the cross-cutting
 properties those files cannot see: all eight composed in one tree, slot
 placement across the family, the single-root invariant three levels deep,
 escaping across a nested slot boundary, classless templates mounting several
@@ -9,10 +9,10 @@ of them at once, and — the point of this family — the ``data-pjx-*`` markers
 their co-located controllers hook onto surviving composition.
 
 There is no v2 browser suite: the v0.x Playwright suites
-(``tests/reactivity/test_resizable.py``, ``tests/reactivity/test_notification_toast.py``)
+(``the v0.x suite's test_resizable.py``, ``the v0.x suite's test_notification_toast.py``)
 have no v2 counterpart, so asserting the server-side marker contract is the
 agreed stand-in. The one client-side contract that *is* covered in v2 is
-``pjx.toast()``'s event dispatch, in ``tests/pyjinhx/client/test_pjx_toast.py``;
+``pjx.toast()``'s event dispatch, in ``tests/browser/client/test_toast.py``;
 this file asserts only the server half (the host's ``data-event-name``).
 """
 
@@ -417,7 +417,7 @@ def test_toast_host_renders_an_empty_configured_host(family_dir, session):
     Toasts themselves are created client-side by pjx_toast_host.js, which reads
     data-event-name to know which document event to listen for; the dispatch
     half (pjx.toast fires that event on document) is covered by
-    tests/pyjinhx/client/test_pjx_toast.py and is not duplicated here.
+    tests/browser/client/test_toast.py and is not duplicated here.
     """
     html = (
         render(

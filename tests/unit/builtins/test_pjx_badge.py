@@ -16,7 +16,7 @@ def badge_session():
 
     ClassDescriptor.template_path is absolute and render() feeds it straight to
     the session's FileSystemLoader; Jinja only resolves an absolute path when
-    the loader root is "/". Same fixture shape as tests/pyjinhx/builtins/pjx_icon.
+    the loader root is "/". Same fixture shape as tests/unit/builtins/test_pjx_icon.py.
     """
     return RenderSession()
 
@@ -104,7 +104,7 @@ def test_extra_attrs_surface_on_the_root(badge_session):
 def test_descriptor_finds_snake_case_css():
     """The descriptor probes "<snake_case class name>.css" next to the module.
 
-    Mirrors tests/pyjinhx/builtins/pjx_avatar/test_pjx_avatar.py: css_paths is a
+    Mirrors tests/unit/builtins/test_pjx_avatar.py: css_paths is a
     tuple with 0 or 1 entries (one probe per class, per ADR 0007).
     """
     css_paths = PJXBadge.__pjx_descriptor__.css_paths

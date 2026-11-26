@@ -14,7 +14,7 @@ def card_body_session():
 
     ClassDescriptor.template_path is absolute and render() feeds it straight to
     the session's FileSystemLoader; Jinja only resolves an absolute path when
-    the loader root is "/". Same fixture shape as tests/pyjinhx/builtins/pjx_empty_state.
+    the loader root is "/". Same fixture shape as tests/unit/builtins/test_pjx_empty_state.py.
     """
     return RenderSession()
 

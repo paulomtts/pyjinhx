@@ -96,8 +96,7 @@ class ComponentNode:
     plumbing tests) don't need to supply owner identity they don't have.
 
     NOTE for reviewers: several pre-existing bare ``ComponentNode(x)`` call
-    sites (tests/pyjinhx/test_slot_type_v2.py, tests/pyjinhx/
-    test_render_context.py) rely on these placeholder defaults rather than
+    sites (tests/unit/rendering/template_context/test_slot_type.py, tests/unit/rendering/template_context/test_build_context.py) rely on these placeholder defaults rather than
     being updated to pass real owner identity. Those tests only assert
     ``pytest.raises(TypeError)`` / opacity behavior, not error-message
     content, so the placeholders don't currently weaken any assertion - but

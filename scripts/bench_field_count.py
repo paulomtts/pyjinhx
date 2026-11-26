@@ -42,7 +42,7 @@ from pyjinhx.rendering.session import RenderSession
 
 FIELD_COUNTS = (5, 20, 50, 100)
 
-# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# CI runs these only to prove they still execute (tests/scripts/test_bench.py);
 # timings are meaningless at one point, so the sweep collapses to its smallest.
 if os.environ.get("PJX_BENCH_SMOKE"):
     FIELD_COUNTS = FIELD_COUNTS[:1]

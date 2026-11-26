@@ -1,8 +1,8 @@
 """PJXToggleSwitch — v0.x field/markup parity on the v2 engine.
 
-Partial port of tests/unit/test_toggle_segmented.py: only the
+Partial port of the v0.x suite's test_toggle_segmented.py: only the
 ``test_toggle_switch_*`` cases carry over here; the PJXSegmentedControl cases in
-that same file live in tests/pyjinhx/builtins/pjx_segmented_control/. v0.x's
+that same file live in tests/unit/builtins/test_pjx_segmented_control.py. v0.x's
 golden-snapshot comparison does not carry over either — v2 builtins assert on
 rendered substrings, like every sibling port.
 """

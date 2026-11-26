@@ -88,7 +88,7 @@ def test_extra_attrs_surface_on_the_root(modal_session):
 class ModalHost(BaseComponent):
     """A three-slot host, so header/body/footer compose in one tree without string joins.
 
-    Mirrors CardHost in tests/pyjinhx/builtins/pjx_card/test_pjx_card.py: a bare
+    Mirrors CardHost in tests/unit/builtins/test_pjx_card.py: a bare
     `{{ content }}` interpolation never iterates a list, so three named slots is
     the proven multi-child shape.
     """

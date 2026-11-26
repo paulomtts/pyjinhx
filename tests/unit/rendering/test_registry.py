@@ -400,7 +400,7 @@ def test_a_quiet_block_does_not_reach_into_a_nested_request_scope():
     """One request's suppression is its own: a scope opened inside the block
     starts loud, and what it quiets does not survive back out into the block.
 
-    The scope's own bind/reset lifecycle is pinned in tests/pyjinhx/test_session.py;
+    The scope's own bind/reset lifecycle is pinned in tests/unit/rendering/session/test_session.py;
     what this asserts is the pairing of the two, which is registry's to keep working.
     """
     with request_scope(), quiet_collisions([make_key("Widget", "w1")]):

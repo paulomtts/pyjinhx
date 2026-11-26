@@ -1,7 +1,7 @@
 """PJXNotification — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x tests/unit/test_notification_redesign.py and checked against
-tests/unit/golden/notification.html. Slot strings are escaped here, matching
+Ported from v0.x the v0.x suite's test_notification_redesign.py and checked against
+the v0.x suite's golden/notification.html. Slot strings are escaped here, matching
 measured pjx_empty_state behavior -- PjxSlot's docstring and ADR 0003 both
 describe plain-string slots as raw-HTML-capable, which the implementation
 does not currently honor; tracked as a pre-existing gap, not fixed by #532.
@@ -19,7 +19,7 @@ from pyjinhx.rendering.session import RenderSession
 @pytest.fixture
 def session():
     # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as tests/pyjinhx/builtins/test_pjx_region_loader.py.
+    # same fixture shape as tests/unit/builtins/test_pjx_region_loader.py.
     return RenderSession()
 
 

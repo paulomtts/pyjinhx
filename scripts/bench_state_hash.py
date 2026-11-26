@@ -31,7 +31,7 @@ from pyjinhx.reactive.component import ReactiveComponent
 FIELD_COUNTS = (5, 20, 50, 100)
 VALUE_SIZES = (16, 256, 4096, 65536)
 
-# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# CI runs these only to prove they still execute (tests/scripts/test_bench.py);
 # timings are meaningless at one point, so the sweep collapses to its smallest.
 if os.environ.get("PJX_BENCH_SMOKE"):
     FIELD_COUNTS = FIELD_COUNTS[:1]

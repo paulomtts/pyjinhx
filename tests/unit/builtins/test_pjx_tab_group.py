@@ -64,7 +64,7 @@ def test_assets_are_discovered_from_the_component_directory():
     assert any(p.name == "pjx_tab_group.css" for p in descriptor.css_paths)
 
 
-# A composed group renders the list/tab/panel wiring the JS expects to find (port of v0.x tests/reactivity/test_tabs.py and test_tab_reorder.py).
+# A composed group renders the list/tab/panel wiring the JS expects to find (port of v0.x the v0.x suite's test_tabs.py and test_tab_reorder.py).
 
 
 @pytest.fixture

@@ -36,7 +36,7 @@ layout.
 ## Decision: a generated JS asset that embeds `popoverPosition`
 
 A builtin ships exactly one script: the asset walk resolves one per class by
-stem (see `tests/pyjinhx/builtins/pjx_popover/test_pjx_popover_assets.py`). So
+stem (see `tests/unit/builtins/test_pjx_popover.py`). So
 the shared `pjx_popover/pjx_popover_position.js` cannot ride along, and
 `pjx_popover.js` and `pjx_select.js` each carry a byte-identical copy of it,
 kept in step by tests.
@@ -44,7 +44,7 @@ kept in step by tests.
 The picker does not add a third copy. `scripts/build_pjx_roster_picker_js.py`
 writes `pjx_roster_picker.js` as a banner, then `pjx_popover_position.js`, then
 `src/picker.js`. The generated file is committed, and
-`tests/pyjinhx/builtins/pjx_roster_picker/test_pjx_roster_picker_js_build.py`
+`tests/unit/builtins/pjx_roster_picker/test_js_build.py`
 fails when it no longer matches a fresh build. The graph's
 `scripts/build_pjx_graph_js.py` works the same way.
 

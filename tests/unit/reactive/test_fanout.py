@@ -357,7 +357,7 @@ def _clean_registries(tmp_path, monkeypatch):
     # (this test file's dir), not `template_dir` passed to `build_registry` —
     # the two are deliberately different concerns (tag lookup vs. file probe).
     # Point each descriptor's `template_path` at this test's tmp_path file, the
-    # same way tests/pyjinhx/test_render_integration.py does, so render_level()
+    # same way tests/unit/rendering/pipeline/test_integration.py does, so render_level()
     # finds a real file instead of falling back to an ancestor's unprobed guess.
     # The loader is absolute-only, so each descriptor carries the full path.
     PlainWidget.__pjx_descriptor__ = dataclasses.replace(

@@ -12,7 +12,7 @@ from pyjinhx.rendering.session import RenderSession
 def stack_session():
     """Loader rooted at "/" so absolute descriptor template paths resolve.
 
-    Same fixture shape as tests/pyjinhx/builtins/pjx_badge.
+    Same fixture shape as tests/unit/builtins/test_pjx_badge.py.
     """
     return RenderSession()
 

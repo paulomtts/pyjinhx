@@ -1,7 +1,7 @@
 """PJXPopover(portal=True) reparents the panel to document.body while open.
 
-Mirrors tooltip's portal mechanism (tests/pyjinhx/builtins/pjx_tooltip/
-test_pjx_tooltip_collision.py) but for popover's click-toggle lifecycle:
+Mirrors tooltip's portal mechanism (tests/browser/builtins/pjx_tooltip/
+test_collision.py) but for popover's click-toggle lifecycle:
 rootOf()/triggerFor()/panelForToggle() must keep resolving correctly once
 the panel alone has moved, and the app-level hazards described in #1053
 (scroll-close, an outside-click false positive from the panel itself, a

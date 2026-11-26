@@ -95,7 +95,7 @@
 // ^ Verbatim copy of pjx_popover_position.js. The asset walk ships one script
 // per class by stem, so the shared primitive has no slot of its own; it is
 // duplicated here rather than rewritten so PJXSelect can reuse the original
-// file unchanged. tests/.../test_pjx_popover_assets.py fails if the two drift.
+// file unchanged. tests/unit/builtins/test_pjx_popover.py fails if the two drift.
 
 (function () {
     window.pjx = window.pjx || {};

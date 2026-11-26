@@ -40,7 +40,7 @@ FILLER_RUNS = (48, 128, 512, 2048, 8192, 32768)
 
 SIZES = (4096, TOTAL_BYTES)
 
-# CI runs these only to prove they still execute (tests/test_bench_scripts_smoke.py);
+# CI runs these only to prove they still execute (tests/scripts/test_bench.py);
 # timings are meaningless at one point, so the sweep collapses to its smallest.
 if os.environ.get("PJX_BENCH_SMOKE"):
     FILLER_RUNS = FILLER_RUNS[:1]

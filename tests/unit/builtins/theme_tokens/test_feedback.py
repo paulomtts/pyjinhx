@@ -12,7 +12,7 @@ from pyjinhx.client import read_pjx_theme_css
 BUILTINS = Path(__file__).parents[4] / "pyjinhx" / "builtins"
 STATUSES = ("info", "success", "warning", "error")
 
-# Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
+# Copied from tests/unit/builtins/theme_tokens/test_stylesheets.py: the tests tree has no
 # __init__.py files, so test modules cannot import each other reliably.
 ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
 DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")

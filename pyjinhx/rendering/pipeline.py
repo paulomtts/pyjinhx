@@ -262,7 +262,7 @@ def _finish_cached_level(
     root attrs and register a reactive instance, and nothing reactive is ever
     in this cache. Called only when accumulate_assets is actually one of this
     session's on_rendered subscribers (D6): that hook is opt-in per session,
-    not automatic (see tests/pyjinhx/test_assets.py), so a hit must reproduce
+    not automatic (see tests/unit/rendering/assets/test_accumulation.py), so a hit must reproduce
     what the live path would have done for *this* session - forcing
     accumulation onto a session that never asked for it would make a hit
     observably different from the miss it stands in for.

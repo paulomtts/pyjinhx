@@ -31,7 +31,7 @@ def theme_tag() -> str:
     return f'<style id="pjx-theme">{read_pjx_theme_css()}</style>'
 
 
-# Copied from tests/pyjinhx/client/test_pjx_theme_inject.py: the tests tree
+# Copied from tests/unit/client/test_inject.py: the tests tree
 # has no __init__.py files, so test modules cannot import each other reliably.
 @pytest.fixture
 def themed() -> Iterator[None]:
@@ -358,7 +358,7 @@ def test_runtime_page_output_is_stable(tmp_path, name):
     assert page_a == page_b
 
 
-# Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
+# Copied from tests/unit/builtins/theme_tokens/test_stylesheets.py: the tests tree has no
 # __init__.py files, so test modules cannot import each other reliably.
 ROOT = re.compile(r"^:root \{(.*?)^\}", re.MULTILINE | re.DOTALL)
 DECLARATION = re.compile(r"([\w-]+):\s*([^;]+);")
