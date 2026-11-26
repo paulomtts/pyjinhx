@@ -1,0 +1,15 @@
+{
+  "blocks": [
+    {
+      "keyword": "python",
+      "open_line": 2,
+      "body_lines": [
+        3,
+        3
+      ],
+      "close_line": 4
+    }
+  ],
+  "error": null,
+  "known_gap": "Jinja balances braces inside {{ }}; pyjinhx ends the tag at the first }}"
+}

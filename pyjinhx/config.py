@@ -25,8 +25,9 @@ from importlib.util import find_spec as _find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from pyjinhx._component import BaseComponent
-from pyjinhx.discovery import build_registry
+from pyjinhx._component import all_component_classes
+from pyjinhx.classless import register_document
+from pyjinhx.discovery import build_registry, walk_templates
 from pyjinhx.integrations.base import IntegrationBackend, get_backend
 
 if TYPE_CHECKING:
@@ -282,17 +283,18 @@ def _register_components(components_root: Path | str | None) -> None:
     ``components_root`` is walked when there is one; classes that already
     carry their own template on disk — every shipped builtin — claim their
     tags either way, so an app with no components of its own still gets them.
+    Every ``.pjx`` document under the root that holds a ``{#python`` block is
+    imported here, so its class is known at startup like any other.
     """
     _force_load_builtins()
-    build_registry(components_root, _all_component_classes())
-
-
-def _all_component_classes() -> list[type]:
-    """Every declared BaseComponent subclass, nested ones included."""
-    found: list[type] = []
-    stack = list(BaseComponent.__subclasses__())
-    while stack:
-        cls = stack.pop()
-        found.append(cls)
-        stack.extend(cls.__subclasses__())
-    return found
+    build_registry(components_root, all_component_classes())
+    if components_root is None:
+        return
+    # Built first so that a block asking for `component("Note")` while it is
+    # imported finds the tags; built again if the imports defined classes.
+    known = set(all_component_classes())
+    for candidate in walk_templates(components_root):
+        register_document(candidate.path)
+    classes = all_component_classes()
+    if set(classes) != known:
+        build_registry(components_root, classes)

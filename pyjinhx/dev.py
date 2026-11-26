@@ -14,7 +14,7 @@ the default and a plain no-op.
 import logging
 from dataclasses import dataclass
 
-from pyjinhx._component import BaseComponent
+from pyjinhx._component import all_component_classes
 from pyjinhx.session import get_cache_reverse, get_dirtied, set_dev_strict
 
 logger = logging.getLogger("pyjinhx")
@@ -59,17 +59,6 @@ def _report(message: str) -> None:
     logger.warning(message)
 
 
-def _all_component_classes() -> list[type]:
-    """Every declared BaseComponent subclass, nested ones included."""
-    found: list[type] = []
-    stack = list(BaseComponent.__subclasses__())
-    while stack:
-        cls = stack.pop()
-        found.append(cls)
-        stack.extend(cls.__subclasses__())
-    return found
-
-
 def dependency_graph() -> dict[str, list[str]]:
     """Map each declared reactive key to the class names that depend on it.
 
@@ -80,7 +69,7 @@ def dependency_graph() -> dict[str, list[str]]:
         Reactive key -> sorted class names, itself sorted by key.
     """
     graph: dict[str, set[str]] = {}
-    for cls in _all_component_classes():
+    for cls in all_component_classes():
         # getattr rather than an isinstance check on ReactiveComponent: a plain
         # BaseComponent subclass simply has no such attribute, and reading it
         # this way keeps dev off reactive/'s import list.

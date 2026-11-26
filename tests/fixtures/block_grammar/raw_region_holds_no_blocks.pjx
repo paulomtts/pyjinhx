@@ -1,0 +1,9 @@
+{% raw %}
+{#css
+.a { color: red; }
+#}
+{#python
+x = 1
+#}
+{% endraw %}
+<p></p>

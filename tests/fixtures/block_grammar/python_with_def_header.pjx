@@ -1,0 +1,5 @@
+{#def title: str #}
+{#python
+x = 1
+#}
+<p></p>

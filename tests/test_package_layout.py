@@ -52,6 +52,15 @@ def test_all_matches_expected_surface():
     assert set(pyjinhx.__all__) == EXPECTED_EXPORTS
 
 
+@pytest.mark.parametrize("name", ["stubgen", "manifest"])
+def test_the_documented_command_line_modules_exist(name):
+    module = importlib.import_module(f"pyjinhx.{name}")
+    assert callable(module.main)
+    assert f"python -m pyjinhx.{name}" in (
+        REPO_ROOT / "docs" / "reference" / "public-api.md"
+    ).read_text(encoding="utf-8")
+
+
 def test_all_has_no_duplicates():
     assert len(pyjinhx.__all__) == len(set(pyjinhx.__all__))
 

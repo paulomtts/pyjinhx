@@ -5,9 +5,11 @@ so nothing here exercises class generation.
 """
 
 import logging
+import sys
 from typing import Any
 
 import pytest
+from jinja2 import TemplateSyntaxError
 
 from pyjinhx.props_header import parse_props_header
 
@@ -46,7 +48,8 @@ def test_each_supported_annotation_resolves_to_its_type(
 
 
 def test_unrecognized_annotation_falls_back_to_any(caplog):
-    """The vocabulary is deliberately closed: a header cannot import names."""
+    """A bare name is never imported, so a typo cannot become an import; the
+    warning points at the dotted form that would import it."""
     with caplog.at_level(logging.WARNING, logger="pyjinhx"):
         fields = parse_props_header("{#def value: SomeModel #}")
 
@@ -59,6 +62,7 @@ def test_unrecognized_annotation_falls_back_to_any(caplog):
     message = warnings[0].getMessage()
     assert "value" in message
     assert "SomeModel" in message
+    assert "dotted import path" in message
 
 
 @pytest.mark.parametrize(
@@ -101,8 +105,8 @@ def test_unrecognized_inside_optional_warns_exactly_once(annotation: str, caplog
 def test_slot_names_resolve_to_the_marker_carrying_aliases(
     annotation: str, expected_children: bool
 ):
-    """A header cannot import names, so the two slot aliases have to be part of
-    the parser's own closed vocabulary."""
+    """The slot aliases are part of the parser's own vocabulary, so a header
+    needs no import path to name them."""
     from typing import get_args
 
     from pyjinhx._component import PjxSlot
@@ -227,11 +231,6 @@ def test_header_may_span_multiple_lines_and_carry_extra_whitespace():
     assert parse_props_header(source) == [("title", str, ...), ("count", int, 0)]
 
 
-def test_header_after_leading_content_is_not_a_header():
-    """Only a leading header is out-of-band config; later ones are plain comments."""
-    assert parse_props_header("<div></div>{#def title: str #}") is None
-
-
 def test_a_plain_jinja_comment_is_not_a_header():
     assert parse_props_header("{# just a comment #}<div></div>") is None
 
@@ -257,3 +256,113 @@ def test_parsing_uses_only_the_stdlib():
     }
     assert "create_model" not in names
     assert "_OpenComponent" not in names
+
+
+def test_a_css_block_above_the_header_does_not_hide_it():
+    source = "{#css\n.card { padding: 1rem; }\n#}\n{#def title: str #}\n<div></div>"
+
+    assert parse_props_header(source) == [("title", str, ...)]
+
+
+def test_the_header_is_found_in_the_middle_and_at_the_end():
+    middle = "<p></p>\n{#def title: str #}\n<div></div>"
+    end = "<div></div>\n{#def title: str #}"
+
+    assert parse_props_header(middle) == [("title", str, ...)]
+    assert parse_props_header(end) == [("title", str, ...)]
+
+
+def test_a_second_header_raises_at_its_line():
+    source = "{#def a #}\n<div></div>\n{#def b #}"
+
+    with pytest.raises(TemplateSyntaxError) as raised:
+        parse_props_header(source)
+
+    assert raised.value.lineno == 3
+
+
+def test_the_spaced_legacy_header_still_parses_in_first_position():
+    assert parse_props_header("{# def title: str #}<div></div>") == [
+        ("title", str, ...)
+    ]
+
+
+def test_the_spaced_form_anywhere_else_is_prose():
+    assert parse_props_header("<div></div>\n{# def title: str #}") is None
+    assert parse_props_header("{#css\n.a {}\n#}\n{# def title: str #}") is None
+
+
+def test_literal_annotation_becomes_a_typing_literal():
+    from typing import Literal
+
+    assert parse_props_header('{#def tone: Literal["info", "warn"] = "info" #}') == [
+        ("tone", Literal["info", "warn"], "info")
+    ]
+
+
+def test_literal_members_must_be_literals():
+    with pytest.raises(ValueError, match="tone"):
+        parse_props_header("{#def tone: Literal[SOME_NAME] #}")
+
+
+@pytest.mark.parametrize(
+    "annotation, expected",
+    [
+        ("list[str]", list[str]),
+        ("dict[str, int]", dict[str, int]),
+        ("list[list[int]]", list[list[int]]),
+        ("tuple[str, int]", tuple[str, int]),
+        ("tuple[int, ...]", tuple[int, ...]),
+        ("tuple[str, ...] | None", tuple[str, ...] | None),
+    ],
+)
+def test_generic_annotations_resolve_their_arguments(annotation: str, expected: Any):
+    assert parse_props_header(f"{{#def value: {annotation} #}}") == [
+        ("value", expected, ...)
+    ]
+
+
+def test_list_of_slot_keeps_the_slot_alias_as_its_argument():
+    from pyjinhx._component import Slot
+
+    assert parse_props_header("{#def rows: list[Slot] #}") == [
+        ("rows", list[Slot], ...)
+    ]
+
+
+def test_union_of_two_types_is_a_real_union():
+    assert parse_props_header("{#def size: str | int #}") == [("size", str | int, ...)]
+
+
+def test_attribute_types_resolve_to_pyjinhx_types():
+    from pyjinhx._component import AttrValue, ExtraAttrs
+
+    assert parse_props_header("{#def attrs: ExtraAttrs, title: AttrValue #}") == [
+        ("attrs", ExtraAttrs, ...),
+        ("title", AttrValue, ...),
+    ]
+
+
+@pytest.mark.parametrize(
+    "default",
+    ["DEFAULT_X", "make()", "app.make(1)", "app.make(n=1)", "app.B * 2", "lambda: 1"],
+    ids=["bare-name", "bare-call", "call-args", "call-kwargs", "expression", "lambda"],
+)
+def test_a_default_outside_the_three_forms_says_what_is_allowed(default: str):
+    """A bare name is refused, not guessed at: a typo must never become an import."""
+    with pytest.raises(ValueError) as excinfo:
+        parse_props_header(f"{{#def x: int = {default} #}}")
+    message = str(excinfo.value)
+    assert "default for 'x'" in message
+    assert "a literal" in message
+    assert "a dotted name (pkg.mod.NAME)" in message
+    assert "a dotted name called with no arguments (pkg.mod.make())" in message
+
+
+def test_parsing_a_dotted_default_imports_nothing():
+    module = "tests.pyjinhx.header_import_probe"
+    sys.modules.pop(module, None)
+    parse_props_header(
+        f"{{#def tone: str = {module}.Probe.ON, at: str = {module}.f() #}}"
+    )
+    assert module not in sys.modules

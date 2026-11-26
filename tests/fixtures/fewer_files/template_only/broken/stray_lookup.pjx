@@ -1,0 +1,4 @@
+{#def #}
+<div class="note">
+  {{ nothing.here }}
+</div>

@@ -1,0 +1,20 @@
+from pyjinhx import BaseComponent, Children, Slot
+
+
+class Card(BaseComponent):
+    """A titled box: an optional header slot over a body of child markup."""
+
+    title: str
+    header: Slot | None = None
+    body: Children = ""
+
+    template = r"""
+    <section id="{{ id }}" class="card">
+      <h2 class="card__title">{{ title }}</h2>
+      {% if header %}<header class="card__header">{{ header }}</header>{% endif %}
+      <div class="card__body">{{ body }}</div>
+    </section>
+    {#css
+    .card__title { font-size: 1rem; }
+    #}
+    """

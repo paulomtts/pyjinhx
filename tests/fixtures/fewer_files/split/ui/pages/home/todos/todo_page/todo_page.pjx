@@ -1,0 +1,14 @@
+<main id="{{ id }}" class="todo-page">
+  <header class="todo-page__head">
+    {{ badge }}
+    <TodoCount/>
+  </header>
+  <Toolbar title="Quick actions"/>
+  <Card title="{{ title }}" header="{{ summary }}">
+    <ProjectNameField id="project-name-field" value="{{ project }}"/>
+    <TaskNameField id="task-name-field"/>
+  </Card>
+  {{ todo_list }}
+  <EmptyState message="Nothing archived" icon="{{ archive_icon }}"/>
+  <footer class="todo-page__foot">Total <Money cents="{{ total_cents }}" currency="{{ currency }}"/></footer>
+</main>

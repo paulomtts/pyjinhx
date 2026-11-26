@@ -1,0 +1,5 @@
+{#css
+.a { color: red; }
+#}
+{#def a: int #}
+<p></p>

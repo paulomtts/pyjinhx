@@ -1,5 +1,6 @@
 """RenderSession, the per-request ContextVars, and the request_scope that owns them."""
 
+import logging
 import threading
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
@@ -10,7 +11,10 @@ from typing import TYPE_CHECKING, Any
 from jinja2 import BaseLoader, Environment, TemplateNotFound
 
 from pyjinhx.assets import AssetMode
+from pyjinhx.importer import block_changed
 from pyjinhx.markers import finalize_slot_node
+from pyjinhx.sfc import read_document
+from pyjinhx.template_blocks import hide_block_lines
 
 if TYPE_CHECKING:
     # Type-only: the hook's signature names the spine's own types, but importing
@@ -71,6 +75,18 @@ _dev_strict = False
 _dev_strict_lock = threading.Lock()
 
 
+logger = logging.getLogger("pyjinhx")
+
+
+def _warn_if_block_changed(path: Path, text: str) -> None:
+    """Log that a document's ``{#python`` block no longer matches the module the
+    process imported, once per edit."""
+    if "{#python" in text and block_changed(path, text):
+        logger.warning(
+            "%s: the {#python block changed; restart the process to load it", path
+        )
+
+
 class NoActiveRequestScope(RuntimeError):
     """Raised when per-request state is touched outside an active request_scope()."""
 
@@ -87,10 +103,14 @@ class AbsolutePathLoader(BaseLoader):
         # fallback rooted at cwd would silently load whichever file happened to
         # sit beside the process, which is how the old FileSystemLoader("templates")
         # default turned every un-configured request into a TemplateNotFound (#728).
-        path = Path(template)
+        # "<path>::<Class>" names a class's inline template inside its module.
+        path_text, _, inline_class = template.partition("::")
+        path = Path(path_text)
         if not path.is_absolute() or not path.is_file():
             raise TemplateNotFound(template)
-        source = path.read_text(encoding="utf-8")
+        text = read_document(path, inline_class or None)
+        _warn_if_block_changed(path, text)
+        source = hide_block_lines(text)
         mtime = path.stat().st_mtime
         name = str(path)
 
@@ -101,8 +121,10 @@ class AbsolutePathLoader(BaseLoader):
             # candidate - hundreds of identical stats for one file. The request
             # cache is a plain dict bound once by request_scope(), so the fan-out
             # threadpool's per-item Context copies all mutate the same object.
+            # Keyed by the full template name, not the file: the classes of
+            # one module share a file but each has its own cached template.
             freshness = get_freshness_cache()
-            if freshness.get(name):
+            if freshness.get(template):
                 return True
             # Matches FileSystemLoader's cache-invalidation contract: a deleted
             # or touched file must invalidate, so the missing case is stale
@@ -114,7 +136,7 @@ class AbsolutePathLoader(BaseLoader):
             except OSError:
                 return False
             if fresh:
-                freshness[name] = True
+                freshness[template] = True
             return fresh
 
         return source, name, uptodate
@@ -435,8 +457,8 @@ def get_cache_forward() -> dict[tuple[type, object], set[str]]:
 def get_freshness_cache() -> dict[str, bool]:
     """Return this request's confirmed-fresh template paths, empty outside a scope.
 
-    Keyed by the absolute template path string the loader reports as a Template's
-    filename. A path recorded here has had its mtime confirmed once this request
+    Keyed by the template name the loader was asked for: an absolute path, or
+    ``<module path>::<Class>`` for an inline template. A name recorded here has had its mtime confirmed once this request
     and is not re-stat'ed again until the next one, so a template edited mid-request
     is picked up on the following request rather than the current one.
     """

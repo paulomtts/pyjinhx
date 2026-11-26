@@ -1,0 +1,7 @@
+{
+  "blocks": [],
+  "error": {
+    "code": "python-block-early-close",
+    "line": 2
+  }
+}

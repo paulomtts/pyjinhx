@@ -1,0 +1,10 @@
+{#python
+from pyjinhx import BaseComponent
+
+
+class StrayLookup(BaseComponent):
+    """A template that fails while rendering, on a known line."""
+#}
+<div class="note">
+  {{ nothing.here }}
+</div>

@@ -1,0 +1,7 @@
+{
+  "blocks": [],
+  "error": {
+    "code": "stray-comment-close",
+    "line": 3
+  }
+}
