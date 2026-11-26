@@ -7,9 +7,9 @@ rendering/session.py from inside the method body, since pipeline.py imports
 BaseComponent at import time and a module-level edge back would be a real cycle
 (#643). components/base.py's ClassDescriptor is built and attached in
 __pydantic_init_subclass__ (#271) and nothing else imports it. rendering/segments.py
-is import-pure — stdlib only (also asserted in test_segments.py); this file is
-the whole-package view, so a new module cannot quietly add an edge nobody
-declared.
+is import-pure — stdlib only (also asserted in test_segments.py); the edge
+table in _import_edges.py is the whole-package view, so a new module cannot
+quietly add an edge nobody declared.
 """
 
 import ast
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.packaging._import_graph_helpers import (
+from tests.packaging._import_edges import (
     ALLOWED_INTERNAL_IMPORTS,
     PACKAGE_ROOT,
     internal_imports,
@@ -34,8 +34,9 @@ def module_name(path: Path) -> str:
 
 
 def test_every_module_is_covered_by_the_declared_edge_table():
-    """A new module must declare its edges here before it can be imported
-    anywhere — otherwise the table silently stops being a whole-package view."""
+    """A new module must declare its edges in `_import_edges.py` before it can be
+    imported anywhere — otherwise the table silently stops being a whole-package
+    view."""
     on_disk = {module_name(path) for path in module_paths()}
     assert on_disk == set(ALLOWED_INTERNAL_IMPORTS)
 

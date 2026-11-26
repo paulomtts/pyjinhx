@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.packaging._import_graph_helpers import (
+from tests.packaging._import_edges import (
     ALLOWED_INTERNAL_IMPORTS,
     PACKAGE_ROOT,
     internal_imports,
