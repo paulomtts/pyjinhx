@@ -431,7 +431,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # the result through discovery's own write path. Nothing imports it back.
     "components.classless": frozenset(
         {
-            "pyjinhx.components",
             "pyjinhx.components.base",
             "pyjinhx.components.discovery",
             "pyjinhx.components.importer",
@@ -488,12 +487,11 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # every lazy builtin module to load so discovery can register them all.
     "config": frozenset(
         {
-            "pyjinhx",
+            "pyjinhx.dev",
             "pyjinhx.components.base",
             "pyjinhx.builtins",
             "pyjinhx.components.classless",
             "pyjinhx.components.discovery",
-            "pyjinhx.dev",
             "pyjinhx.integrations.base",
             "pyjinhx.integrations.fastapi",
             "pyjinhx.reactive.backend",
@@ -698,8 +696,6 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # rather than re-parsing or substring-matching rendered markup.
     "reactive.fanout": frozenset(
         {
-            "pyjinhx.components",
-            "pyjinhx.rendering",
             "pyjinhx.components.discovery",
             "pyjinhx.rendering.registry",
             "pyjinhx.reactive.cache",
@@ -838,8 +834,18 @@ def module_name(path: Path) -> str:
     return ".".join(path.relative_to(PACKAGE_ROOT).with_suffix("").parts)
 
 
+def is_module(dotted: str) -> bool:
+    """Whether ``pyjinhx.x.y`` names a module or package on disk."""
+    path = PACKAGE_ROOT.joinpath(*dotted.split(".")[1:])
+    return path.with_suffix(".py").is_file() or (path / "__init__.py").is_file()
+
+
 def internal_imports(path: Path) -> set[str]:
-    """Every ``pyjinhx.*`` module name imported by ``path``."""
+    """Every ``pyjinhx.*`` module name imported by ``path``.
+
+    ``from pkg import mod`` is recorded as ``pkg.mod`` when that is a module, so
+    an allowed ``pyjinhx.rendering`` does not let through every submodule.
+    """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     found: set[str] = set()
     for node in ast.walk(tree):
@@ -849,7 +855,17 @@ def internal_imports(path: Path) -> set[str]:
             assert node.level == 0, (
                 f"{path.name} must use absolute imports, not relative ones"
             )
-            names = [node.module or ""]
+            module = node.module or ""
+            names = [module]
+            if module == "pyjinhx" or module.startswith("pyjinhx."):
+                submodules = [
+                    f"{module}.{alias.name}"
+                    for alias in node.names
+                    if is_module(f"{module}.{alias.name}")
+                ]
+                names = submodules
+                if len(submodules) < len(node.names):
+                    names.append(module)
         else:
             continue
         found.update(n for n in names if n == "pyjinhx" or n.startswith("pyjinhx."))
