@@ -17,7 +17,7 @@ from pyjinhx.components.base import (
     _template_candidate,
     _walk_template,
 )
-from tests.unit.components.base._class_descriptor_helpers import _MRO_MODULE
+from tests.unit.components.base._mro_module import _MRO_MODULE
 
 
 class TestPascalToSnake:

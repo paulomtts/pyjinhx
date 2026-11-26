@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.unit.components.base._class_descriptor_helpers import _MRO_MODULE
+from tests.unit.components.base._mro_module import _MRO_MODULE
 
 
 @pytest.fixture
