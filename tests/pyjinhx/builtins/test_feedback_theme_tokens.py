@@ -10,7 +10,7 @@ import pytest
 from pyjinhx.client import read_pjx_theme_css
 
 UI = Path(__file__).parents[3] / "pyjinhx" / "builtins"
-BUILTINS = UI.parent
+BUILTINS = UI
 STATUSES = ("info", "success", "warning", "error")
 
 # Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no
