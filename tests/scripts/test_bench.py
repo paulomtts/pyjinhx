@@ -52,6 +52,8 @@ def test_every_bench_script_is_discovered():
 @pytest.mark.parametrize("script", BENCH_SCRIPTS)
 def test_bench_script_runs(script: str):
     env = {**os.environ, "PJX_BENCH_SMOKE": "1"}
+    # The root conftest sets this for every test; the scripts measure real renders.
+    env.pop("PJX_RENDER_CACHE_MIN_US", None)
     result = subprocess.run(
         [sys.executable, str(SCRIPTS_DIR / script)],
         capture_output=True,
