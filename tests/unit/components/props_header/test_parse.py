@@ -242,7 +242,7 @@ def test_parsing_uses_only_the_stdlib():
     from pathlib import Path
 
     source = (
-        Path(__file__).resolve().parents[2]
+        Path(__file__).resolve().parents[4]
         / "pyjinhx"
         / "components"
         / "props_header.py"

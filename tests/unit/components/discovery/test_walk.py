@@ -10,7 +10,7 @@ import pytest
 from pyjinhx.components import discovery
 from pyjinhx.components.discovery import TemplateCandidate, walk_templates
 
-DISCOVERY_DIR = Path(__file__).parent.parent / "fixtures" / "templates" / "discovery"
+DISCOVERY_DIR = Path(__file__).parents[3] / "fixtures" / "templates" / "discovery"
 
 
 @pytest.fixture(autouse=True)

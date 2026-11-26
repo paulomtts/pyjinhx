@@ -21,7 +21,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.components.props_header import build_component_class, parse_props_header
 from pyjinhx.rendering.pipeline import render_level
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
+_TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
 
 class StaleCard(BaseComponent):
