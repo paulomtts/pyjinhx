@@ -9,8 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-UI = Path(__file__).parents[3] / "pyjinhx" / "builtins"
-BUILTINS = UI
+BUILTINS = Path(__file__).parents[3] / "pyjinhx" / "builtins"
 
 # Copied from tests/pyjinhx/builtins/test_feedback_theme_tokens.py: the tests
 # tree has no __init__.py files, so test modules cannot import each other reliably.
@@ -41,7 +40,7 @@ def light(token: str) -> str:
 
 
 def read(path: str) -> str:
-    return (UI / path).read_text(encoding="utf-8")
+    return (BUILTINS / path).read_text(encoding="utf-8")
 
 
 def read_builtin(path: str) -> str:
