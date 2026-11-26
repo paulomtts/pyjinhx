@@ -2,8 +2,8 @@
 
 Real Chromium, a real `showModal()` dialog, the real shipped controller: the
 server-rendered markup lives in test_pjx_tooltip.py, the clamp/flip math in
-test_pjx_tooltip_collision.py and the backdrop's lifecycle in
-test_pjx_tooltip_backdrop.py — this file owns only what changes when the
+test_collision.py and the backdrop's lifecycle in
+test_backdrop.py — this file owns only what changes when the
 trigger's ancestor chain passes through a dialog.
 """
 

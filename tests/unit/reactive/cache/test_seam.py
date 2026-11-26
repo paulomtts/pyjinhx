@@ -1,6 +1,6 @@
 """The cascade itself: which tier answered a load(), seen from the backend's side.
 
-test_reactive_cache_tier2_wiring.py proves each tier's plumbing works. This file
+test_tier2_wiring.py proves each tier's plumbing works. This file
 proves the order they are consulted in, by recording every call wrapped_load
 makes to the backend and asserting on that ledger: a tier-1 hit must produce no
 backend traffic at all, and the ttl a class resolves to must be the ttl that

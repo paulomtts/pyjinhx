@@ -1,7 +1,7 @@
 """Combined-matrix tests for discovery: orphan, plain duplicate and pjx_replace
 resolution all inside one `build_registry` call.
 
-The per-feature files each drive one axis at a time — `test_discovery.py` the
+The per-feature files each drive one axis at a time — `test_walk.py` the
 walk, `test_registry.py` the registry and duplicate warning, `test_replace.py`
 the override. Verified before writing this file: none of them asserts an
 orphan tag and a replace resolution in the same build, and `test_registry.py`

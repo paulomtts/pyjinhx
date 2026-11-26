@@ -8,7 +8,7 @@ returns a finished string (it calls `render_level()` then `serialize()`
 internally) — passing its output to `stamp_root_attrs()` (which needs a
 `RenderedLevel`) would fail immediately. These tests use `render_level()`
 instead, which is the actual `RenderedLevel`-returning step in the pipeline
-and the same function `test_render_level.py` exercises.
+and the same function `rendering/pipeline/test_level.py` exercises.
 
 No production code changes are expected here (see docs/superpowers/plans/
 2026-07-30-issue-287.md's Global Constraints for the one known, deliberate

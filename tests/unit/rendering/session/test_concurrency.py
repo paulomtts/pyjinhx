@@ -93,7 +93,7 @@ def concurrency_assets(tmp_path_factory: pytest.TempPathFactory) -> Path:
     The files are real because emit_assets under INLINE mode read_text()s them on
     every render - that read is one of the two race surfaces under test, so it
     must not be stubbed out. Descriptors are built by hand and assigned, the same
-    way test_render_level.py and test_session.py do, since template and asset
+    way rendering/pipeline/test_level.py and test_session.py do, since template and asset
     resolution is an MRO/filesystem walk with no override attribute.
     """
     assets = tmp_path_factory.mktemp("concurrency_assets")

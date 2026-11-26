@@ -118,7 +118,7 @@ class TestClassDescriptorEquality:
     def test_equal_field_values_compare_equal(self):
         # rebuild_class_descriptor replaces the whole object; equality is how a
         # test asserts a no-op rebuild produced an equivalent descriptor. The
-        # rebuild itself is exercised in test_component_descriptor.py.
+        # rebuild itself is exercised in test_class_descriptor.py.
         assert make_descriptor() == make_descriptor()
 
     def test_differing_field_values_compare_unequal(self):

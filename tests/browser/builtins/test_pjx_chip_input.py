@@ -76,7 +76,7 @@ def test_chip_input_follows_theme_in_dark_mode(page):
 # An app composing its own chip-shaped UI (e.g. an async ref picker) needs the
 # same markup PJXChipInput builds internally. The function is DOM-bound, so the
 # tests run the real file in real chromium rather than asserting on source
-# strings — same approach as test_pjx_popover_position.py.
+# strings — same approach as browser/builtins/pjx_popover/test_position.py.
 
 
 SOURCE = (

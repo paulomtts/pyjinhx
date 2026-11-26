@@ -1,6 +1,6 @@
 """PJXAlert — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x the v0.x suite's test_alert_dismiss.py. Slot strings are escaped
+Ported from the v0.x suite's test_alert_dismiss.py. Slot strings are escaped
 here, matching measured pjx_notification/pjx_empty_state behavior -- PjxSlot's
 docstring and ADR 0003 both describe plain-string slots as raw-HTML-capable,
 which the implementation does not currently honor; tracked as a pre-existing

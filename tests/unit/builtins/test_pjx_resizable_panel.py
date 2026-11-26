@@ -1,6 +1,6 @@
 """PJXResizablePanel — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x the v0.x suite's test_resizable_parts.py (panel half). Slot strings
+Ported from the v0.x suite's test_resizable_parts.py (panel half). Slot strings
 are escaped here, matching measured pjx_carousel_slide behavior -- a
 pre-existing gap, not fixed by #535.
 """

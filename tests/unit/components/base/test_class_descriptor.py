@@ -68,7 +68,7 @@ class TestResolveSlotFields:
     """#275: `slot_fields` is the set of declared fields that are slots — a
     type-level fact computed once at registration. Which single field receives
     a PascalCase tag's children (the precedence rules) is L1's job, not this
-    one; per-field marker mechanics are covered in test_slot_type_v2.py."""
+    one; per-field marker mechanics are covered in rendering/template_context/test_slot_type.py."""
 
     def test_no_fields_means_no_slots(self):
         class Card(BaseComponent):

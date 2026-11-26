@@ -1,9 +1,9 @@
 """Opening a popover near a viewport edge flips or clamps it back on-screen.
 
-The flip/clamp matrix that test_pjx_popover_wiring.py deferred: real trigger
+The flip/clamp matrix that test_wiring.py deferred: real trigger
 positions in a real viewport, asserted on the panel's rendered box rather than
 on synthetic rects fed to the primitive (that is
-test_pjx_popover_position.py's job).
+test_position.py's job).
 """
 
 from __future__ import annotations

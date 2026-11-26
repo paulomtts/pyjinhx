@@ -45,7 +45,7 @@ def test_get_class_returns_none_for_unknown_tag_never_raises():
 
 
 def test_registry_state_is_not_a_bare_module_level_container():
-    """The purity scan in test_discovery.py flags dict/list/set module globals.
+    """The purity scan in test_walk.py flags dict/list/set module globals.
     Registry state must be owned by a holder object so the walk stays visibly
     stateless."""
     mutable = [

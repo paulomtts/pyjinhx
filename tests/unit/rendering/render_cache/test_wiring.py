@@ -77,7 +77,7 @@ def backend():
     """Publish a fresh in-memory backend for one test, then restore the settings.
 
     configure_pyjinhx rather than shutdown_pyjinhx, matching
-    test_reactive_cache_tier2_wiring.py: a test that asked for a backend should
+    reactive/cache/test_tier2_wiring.py: a test that asked for a backend should
     not also blow away whatever else the process was configured with.
     """
     previous = current_settings()
@@ -143,7 +143,7 @@ def _attach(
     slot_fields: frozenset[str] = frozenset(),
     children_field: str | None = None,
 ) -> None:
-    """Point a class at a tmp-path template, as test_render_cache_key.py does."""
+    """Point a class at a tmp-path template, as test_key.py does."""
     cls.__pjx_descriptor__ = ClassDescriptor(
         template_path=template_path,
         slot_fields=slot_fields,
@@ -202,7 +202,7 @@ def test_copying_a_level_shell_gives_an_independently_mutable_segment_list():
 class SpyBackend(InMemoryCacheBackend):
     """An in-memory backend that records its calls and can be told to fail.
 
-    Mirrors reactive/test_reactive_cache_failure_policy.py's BrokenBackend; kept
+    Mirrors reactive/cache/test_failure_policy.py's BrokenBackend; kept
     local rather than imported across the reactive/render test split so neither
     file owns the other's fixture.
     """

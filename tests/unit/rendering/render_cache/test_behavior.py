@@ -1,9 +1,9 @@
 """What the non-reactive render cache promises a caller, exercised through whole
 component trees on the real render path.
 
-The unit-level halves live elsewhere: test_render_cache_key.py owns key
-derivation, test_render_cache_store.py the store/restore round trip, and
-test_render_cache_wiring.py the render_level() call pattern — that the backend
+The unit-level halves live elsewhere: test_key.py owns key
+derivation, test_store.py the store/restore round trip, and
+test_wiring.py the render_level() call pattern — that the backend
 is consulted, that it stops being consulted when told to, and how a degraded or
 corrupt entry is handled. What is pinned here is the user-visible behavior one
 layer up: markup that stays correct across a hit, an edited template that
@@ -33,7 +33,7 @@ from pyjinhx.rendering.session import RenderSession, accumulate_assets, request_
 class SpyBackend(InMemoryCacheBackend):
     """An in-memory backend that records the keys it was asked for.
 
-    A local twin of test_render_cache_wiring.py's SpyBackend rather than an
+    A local twin of test_wiring.py's SpyBackend rather than an
     import across test modules: that one also carries fail_get/fail_put for the
     degradation tests this module deliberately does not repeat, and neither
     file should own the other's fixture.
@@ -58,7 +58,7 @@ def spy():
     """Publish a fresh recording backend for one test, then restore the settings.
 
     configure_pyjinhx rather than shutdown_pyjinhx, matching
-    reactive/test_reactive_cache_tier2_wiring.py: a test that asked for a
+    reactive/cache/test_tier2_wiring.py: a test that asked for a
     backend should not also blow away whatever else the process was configured
     with.
     """
@@ -126,7 +126,7 @@ def test_hit_with_different_children_splices_correctly(spy: SpyBackend, tmp_path
 
     Not a Slot/Children field holding a component — that shape is refused by the
     cache outright (holds_spliced_components), and its refusal is
-    test_render_cache_wiring.py's. The cacheable shape that carries a real
+    test_wiring.py's. The cacheable shape that carries a real
     unresolved ChildRef is a child tag in the shell's own template, resolved per
     request, which is what swapping the registry entry between the two renders
     exercises.

@@ -40,7 +40,7 @@ So: `build_v0_page`/`build_v0_table`/`build_v0_shells` return **markup
 strings** (v0's native shape); `build_v2_page`/`build_v2_table`/
 `build_v2_shells` return a **component instance tree** built by nesting real
 `pyjinhx.builtins` classes directly in Python — the shape v2's own test
-suite (e.g. `test_family_composed_shells_sweep.py`) uses for multi-level
+suite (e.g. `unit/builtins/families/test_composed_shells.py`) uses for multi-level
 composition, and the one that actually renders every builtin instead of
 escaping it into inert text.
 """

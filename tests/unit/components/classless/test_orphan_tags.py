@@ -2,7 +2,7 @@
 
 Render-level: a parent template uses ``<Note …/>`` and nothing ever calls
 ``component("Note")``. The factory-level rules live in
-test_classless_factory.py; this file only checks what the renderer does with
+test_factory.py; this file only checks what the renderer does with
 them.
 """
 

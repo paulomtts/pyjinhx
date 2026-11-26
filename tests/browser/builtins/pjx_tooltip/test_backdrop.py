@@ -2,7 +2,7 @@
 
 Real hover and focus events against the shipped controller: the server-rendered
 markup lives in test_pjx_tooltip.py, the placement math in
-test_pjx_tooltip_collision.py, and this file owns only the backdrop's visibility.
+test_collision.py, and this file owns only the backdrop's visibility.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """PJXResizableGroup — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x the v0.x suite's test_resizable.py. The v0.x browser suite
+Ported from the v0.x suite's test_resizable.py. The v0.x browser suite
 (the v0.x suite's test_resizable.py) drives a Playwright sink page that has no
 v2 counterpart; its contract is covered here by asserting the shipped
 controller still carries the markers and handlers those tests depend on.

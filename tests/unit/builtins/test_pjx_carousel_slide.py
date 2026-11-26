@@ -1,6 +1,6 @@
 """PJXCarouselSlide — v0.x field/markup parity on the v2 engine.
 
-Ported from v0.x the v0.x suite's test_carousel.py (slide half) and golden
+Ported from the v0.x suite's test_carousel.py (slide half) and golden
 carousel_slide.html. Slot strings are escaped here, matching measured
 pjx_alert/pjx_notification behavior -- PjxSlot's docstring and ADR 0003 both
 describe plain-string slots as raw-HTML-capable, which the implementation does

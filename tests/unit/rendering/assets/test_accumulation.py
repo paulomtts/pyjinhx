@@ -24,7 +24,7 @@ def _plain_descriptor(owner: type) -> ClassDescriptor:
 
     Bypasses the real MRO/filesystem template walk on purpose (there is no
     `__pjx_template__` override attribute in production code) — same pattern
-    test_render_level.py uses.
+    rendering/pipeline/test_level.py uses.
     """
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / "basic/plain_div.html",

@@ -226,7 +226,7 @@ class PlainBox(BaseComponent):
 # template resolution is a pure MRO/filesystem walk (`class_name.pjx` beside
 # the defining module; see base.py's `_walk_template`). This test needs a
 # specific template, so it bypasses that walk entirely, the same way
-# test_render_level.py does: build a ClassDescriptor by hand and assign it.
+# rendering/pipeline/test_level.py does: build a ClassDescriptor by hand and assign it.
 PlainBox.__pjx_descriptor__ = ClassDescriptor(
     template_path=_TEMPLATE_DIR / "basic/plain_div.html",
     slot_fields=frozenset(),

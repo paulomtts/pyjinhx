@@ -30,7 +30,7 @@ from pyjinhx.rendering.session import RenderSession
 def reset_registry():
     """Each test starts from an empty published mapping.
 
-    Mirrors test_classless_factory.py's teardown convention: reset to
+    Mirrors components/classless/test_factory.py's teardown convention: reset to
     {}/None on both sides rather than snapshotting and restoring whatever
     was there before.
     """

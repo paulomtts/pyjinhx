@@ -1,4 +1,4 @@
-"""PJXIcon renders a themeable inline SVG from the vendored set (port of v0.x the v0.x suite's test_icon.py)."""
+"""PJXIcon renders a themeable inline SVG from the vendored set (port of the v0.x suite's test_icon.py)."""
 
 import dataclasses
 import logging
