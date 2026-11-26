@@ -1,3 +1,29 @@
+{#python
+from examples.todo.components.item_row import ItemRow
+from examples.todo.context import TodoAppContext
+from examples.todo.keys import Keys
+from pyjinhx import ReactiveComponent
+
+
+class ItemList(ReactiveComponent, react={Keys.TODO_LIST}):
+    """The list of todo rows."""
+
+    items: list[ItemRow] = []  # noqa: RUF012 -- pydantic field, not a shared mutable default
+
+    @classmethod
+    def load(cls, ctx: TodoAppContext | None = None) -> "ItemList":
+        """Build one cache-routed row per todo.
+
+        ``ItemRow.load`` is used rather than a field because the renderer only
+        auto-loads children it builds from tags, not instances assigned to fields.
+        """
+        rows = []
+        for todo in ctx.store.all_todos():
+            row = ItemRow.load(todo.id)
+            row.id = f"row-{todo.id}"
+            rows.append(row)
+        return cls(items=rows)
+#}
 <ul id="{{ id }}" class="todo-list">
   {% for item in items %}{{ item }}{% endfor %}
 </ul>

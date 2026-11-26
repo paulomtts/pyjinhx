@@ -46,3 +46,12 @@ The `<li>` in `components/item_row/item_row.pjx` carries
 Nothing here is artificially slowed down, so against a local store the
 indicators flash by; throttle the network tab to watch them. See
 [docs/reactivity.md](../../docs/reactivity.md) for what the attributes do.
+
+## Layout
+
+Each component is one single-file `.pjx` under `components/<name>/`: the class in
+a leading `{#python` block, then the markup, then any `{#css` block. The shared
+`store.py`, `context.py` and `keys.py` stay plain Python. `import pyjinhx` in
+`examples/__init__.py` installs the import hook that makes the `.pjx` modules
+importable; the `.pyi` stubs next to them are generated
+(`python -m pyjinhx.stubgen examples`) and git-ignored.

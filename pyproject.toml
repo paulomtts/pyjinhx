@@ -36,6 +36,8 @@ packages = ["pyjinhx"]
 
 [tool.pyright]
 typeCheckingMode = "standard"
+# `{#python` components resolve to generated stubs, which pyright reports as stub-only.
+reportMissingModuleSource = "none"
 # `docs/` holds the mkdocs demo registry (`demos/`) and `hooks.py`, which the
 # gallery tests add to sys.path at runtime. Put it on the type-checker's import
 # roots so those imports resolve in the editor.
