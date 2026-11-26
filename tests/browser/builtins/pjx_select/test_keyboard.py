@@ -1,10 +1,9 @@
 """PJXSelect — keyboard navigation of the option panel.
 
-The classes above pin the invariants as source-shape guards (see the module
-docstring history); the classes below are the promised exhaustive key-by-mode
-matrix, driven through real DOM/Playwright the way test_pjx_select_collision.py
-drives positioning: arrow nav, type-ahead, Enter, and Escape, in both single-
-and multi-select mode.
+The exhaustive key-by-mode matrix, driven through real DOM/Playwright the way
+test_collision.py drives positioning: arrow nav, type-ahead, Enter, and Escape,
+in both single- and multi-select mode. The source-shape guards live in
+tests/unit/builtins/pjx_select/test_keyboard.py.
 """
 
 from __future__ import annotations

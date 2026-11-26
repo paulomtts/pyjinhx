@@ -1,16 +1,13 @@
 """The vendored d3 subset the graph engine builds on (pjx_graph/src/d3.vendor.js).
 
-The static checks read the committed bytes. The behaviour checks evaluate the
-real minified file in chromium, since string-matching minified identifiers
-proves nothing about what the bundle actually defines.
+These checks read the committed bytes: the header, the bundled versions and the
+shape of the body. What the bundle defines at runtime is checked in
+tests/browser/builtins/pjx_graph/test_d3_vendor.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 SOURCE = (
     Path(__file__).resolve().parents[4]
@@ -40,20 +37,6 @@ def _header_and_body() -> tuple[str, str]:
     text = SOURCE.read_text(encoding="utf-8")
     start = text.index("\n" + BODY_START) + 1
     return text[:start], text[start:]
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    # Function-scoped so a missing browser skips only the tests that ask for
-    # a page, mirroring tests/browser/conftest.py.
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )
 
 
 def test_vendored_file_exists():

@@ -1,18 +1,14 @@
 """PJXSelect — keyboard navigation of the option panel.
 
-The classes above pin the invariants as source-shape guards (see the module
-docstring history); the classes below are the promised exhaustive key-by-mode
-matrix, driven through real DOM/Playwright the way test_pjx_select_collision.py
-drives positioning: arrow nav, type-ahead, Enter, and Escape, in both single-
-and multi-select mode.
+Source-shape guards on pjx_select.js: the controller keeps the position
+primitive verbatim and invents no new markup hooks. The key-by-mode matrix
+(arrow nav, type-ahead, Enter, Escape) runs in a real page in
+tests/browser/builtins/pjx_select/test_keyboard.py.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
-
-import pytest
 
 UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins"
 CONTROLLER = UI / "pjx_select" / "pjx_select.js"
@@ -141,22 +137,3 @@ class TestUntouchedNeighbours:
     def test_no_new_markup_hooks_were_invented(self):
         template = (UI / "pjx_select" / "pjx_select.pjx").read_text()
         assert "tabindex" not in template.replace('tabindex="-1"', "")
-
-
-# --- real-DOM coverage -------------------------------------------------
-#
-# Mirrors the shape pjx_select.pjx renders (see test_pjx_select_collision.py's
-# STYLE/SINGLE/MULTIPLE for the same pattern): a synthetic page loads the
-# controller unmodified and drives it with real keyboard events.
-
-
-@pytest.fixture(autouse=True)
-def _require_chromium(request: pytest.FixtureRequest) -> None:
-    if "page" not in set(request.fixturenames):
-        return
-    pytest.importorskip("playwright")
-    browser_type: Any = request.getfixturevalue("browser_type")
-    if not Path(browser_type.executable_path).exists():
-        pytest.skip(
-            "chromium is not installed (run: uv run playwright install chromium)"
-        )

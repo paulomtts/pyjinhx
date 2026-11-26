@@ -1,8 +1,8 @@
 """The vendored d3 subset the graph engine builds on (pjx_graph/src/d3.vendor.js).
 
-The static checks read the committed bytes. The behaviour checks evaluate the
-real minified file in chromium, since string-matching minified identifiers
-proves nothing about what the bundle actually defines.
+Evaluates the real minified file in chromium, since string-matching minified
+identifiers proves nothing about what the bundle actually defines. The static
+checks on the committed bytes live in tests/unit/builtins/pjx_graph/test_d3_vendor.py.
 """
 
 from __future__ import annotations

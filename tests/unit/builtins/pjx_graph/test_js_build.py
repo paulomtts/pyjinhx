@@ -1,7 +1,7 @@
 """The single pjx_graph.js asset: its engine source, its build script, and the committed output.
 
-The static checks compare bytes. The behaviour checks load the real asset in
-chromium, since only a running page can show what the file leaves on window.
+These checks compare bytes. What the file leaves on window is checked in
+tests/browser/builtins/pjx_graph/test_js_build.py.
 """
 
 from __future__ import annotations
