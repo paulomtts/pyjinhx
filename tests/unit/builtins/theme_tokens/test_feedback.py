@@ -9,7 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-BUILTINS = Path(__file__).parents[3] / "pyjinhx" / "builtins"
+BUILTINS = Path(__file__).parents[4] / "pyjinhx" / "builtins"
 STATUSES = ("info", "success", "warning", "error")
 
 # Copied from tests/pyjinhx/test_theme_tokens.py: the tests tree has no

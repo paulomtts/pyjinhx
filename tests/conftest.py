@@ -19,6 +19,12 @@ def render_session():
     return RenderSession()
 
 
+@pytest.fixture
+def session():
+    """A plain RenderSession, for the tests that do not define their own."""
+    return RenderSession()
+
+
 @pytest.fixture(autouse=True)
 def render_cost_decisions():
     """Clear the per-class render-cost verdicts around every test.

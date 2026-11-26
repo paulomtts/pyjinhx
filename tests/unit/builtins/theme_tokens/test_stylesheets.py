@@ -9,7 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-REPO_ROOT = Path(__file__).parents[2]
+REPO_ROOT = Path(__file__).parents[4]
 THEME_SHEET = "pyjinhx/client/pjx_theme.css"
 
 # Copied from tests/pyjinhx/client/test_pjx_theme.py: the tests tree has no

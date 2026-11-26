@@ -9,7 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-BUILTINS = Path(__file__).parents[3] / "pyjinhx" / "builtins"
+BUILTINS = Path(__file__).parents[4] / "pyjinhx" / "builtins"
 
 # Copied from tests/pyjinhx/builtins/test_feedback_theme_tokens.py: the tests
 # tree has no __init__.py files, so test modules cannot import each other reliably.
