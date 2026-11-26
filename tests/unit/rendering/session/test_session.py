@@ -1,4 +1,12 @@
-"""Tests for request-scope state, render subscribers and load context on RenderSession."""
+"""Tests for request-scope state, render subscribers and load context on RenderSession.
+
+The per-request mutable state (RenderSession asset slot, instance registry,
+dirtied keys, cache store, cache reverse index, template-freshness cache,
+expected-collision key set) is the entire ContextVar half of the mutable-state
+census. These tests pin the container lifecycle - creation, nesting, exception
+cleanup, thread isolation - not any read/write semantics, which land with the
+modules that consume them.
+"""
 
 import asyncio
 import threading

@@ -1,4 +1,14 @@
-"""Browser tests for picking rows into chips in the roster picker, including the item cap."""
+"""Browser tests for picking rows into chips in the roster picker, including the item cap.
+
+Every page loads the committed pjx_roster_picker.js, so these tests exercise
+the asset that ships. The candidates stub logs each request URL and answers
+with three people, v0 to v2, whatever exclude says, so a row for a chipped
+value really arrives and the script has to hide it. A change recorder
+installed before the click logs every pjx:roster-picker:change. An event
+recorder logs before-pick, pick, before-remove, remove and change with the
+chips present when each fired, and can refuse or throw from one of them. A
+negative is proven by letting a beat pass and checking nothing changed.
+"""
 
 from __future__ import annotations
 

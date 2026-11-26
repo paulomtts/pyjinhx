@@ -1,4 +1,14 @@
-"""Browser tests for pjx_graph's reconcile call, stored positions, swaps and coalescing."""
+"""Browser tests for pjx_graph's reconcile call, stored positions, swaps and coalescing.
+
+Edge ends are measured anchors, swaps are seen by a MutationObserver and
+coalesced into an animation frame, so every stage is served from a real
+origin with the graph CSS applied. Stages start from a persisted identity
+view unless a test says otherwise, so nodes sit at their data coordinates
+and a pointer pixel is a world pixel. Replacement markup is rendered by the
+real components and injected with page.evaluate, as an htmx swap would.
+A document-level recorder installed before the asset runs logs every graph
+event, so a test waits on the rendered count instead of sleeping.
+"""
 
 from __future__ import annotations
 

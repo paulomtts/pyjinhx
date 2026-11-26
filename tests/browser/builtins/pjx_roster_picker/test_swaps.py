@@ -1,4 +1,14 @@
-"""Browser tests for the roster picker across whole-picker and results-page htmx swaps."""
+"""Browser tests for the roster picker across whole-picker and results-page htmx swaps.
+
+Every page loads the committed pjx_roster_picker.js, so these tests exercise
+the asset that ships. Each swap is a real htmx.ajax request whose response
+is routed: a freshly rendered picker for the whole picker, a rendered chip
+(or nothing) for one chip, a results page for the list. The candidates stub
+logs each request URL and answers with three people, v0 to v2, whatever
+exclude says. An event recorder logs every pjx:roster-picker:* event the
+page hears. A swap is awaited on its DOM result; a negative is proven by
+letting a beat pass and checking nothing changed.
+"""
 
 from __future__ import annotations
 
