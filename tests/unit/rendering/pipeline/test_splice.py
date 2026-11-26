@@ -8,7 +8,6 @@ from pyjinhx.components import discovery
 from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
-from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
@@ -53,11 +52,6 @@ def registry():
     discovery._registry.mapping = {"pjx_child": PJXChild}
     yield
     discovery._registry.mapping = {}
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 def test_resolved_childref_is_replaced_by_a_rendered_level(session):

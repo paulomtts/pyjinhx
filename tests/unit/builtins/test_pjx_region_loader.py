@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 
 class TestFields:
@@ -18,11 +17,6 @@ class TestFields:
     def test_undeclared_kwarg_raises(self):
         with pytest.raises(ValidationError):
             PJXRegionLoader(id="rl", bogus="x")  # type: ignore[call-arg]
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

@@ -47,18 +47,6 @@ class TestFields:
 
 from pyjinhx.builtins.pjx_spinner import PJXSpinner
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    """Loader rooted at "/" so absolute descriptor template paths resolve.
-
-    ClassDescriptor.template_path is absolute and render() feeds it straight to
-    the session's FileSystemLoader; Jinja only resolves an absolute path when
-    the loader root is "/". Same fixture shape as the sibling builtin tests.
-    """
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

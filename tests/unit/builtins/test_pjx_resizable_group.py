@@ -13,14 +13,6 @@ from pyjinhx.builtins.pjx_resizable_group import PJXResizableGroup
 from pyjinhx.builtins.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx.builtins.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as the sibling builtin tests.
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

@@ -67,11 +67,6 @@ def registry():
     discovery._registry.mapping = {}
 
 
-@pytest.fixture
-def session():
-    return RenderSession()
-
-
 def test_hook_fires_children_before_parents(session):
     """nested_root -> nested_mid -> nested_leaf, so the leaf must be first."""
     order: list[str] = []

@@ -13,14 +13,6 @@ from pydantic import ValidationError
 from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as the sibling builtin tests.
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

@@ -14,14 +14,6 @@ from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
 from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.components import discovery
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as the sibling builtin tests.
-    return RenderSession()
 
 
 @pytest.fixture

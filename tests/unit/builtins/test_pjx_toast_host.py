@@ -10,12 +10,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_toast_host import PJXToastHost
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

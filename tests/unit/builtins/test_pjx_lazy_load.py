@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 
 class TestFields:
@@ -38,11 +37,6 @@ class TestValidation:
     def test_undeclared_kwarg_raises(self):
         with pytest.raises(ValidationError):
             PJXLazyLoad(id="lz", url="/x", bogus="x")  # type: ignore[call-arg]
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

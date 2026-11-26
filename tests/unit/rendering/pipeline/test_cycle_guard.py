@@ -7,7 +7,6 @@ import pytest
 from pyjinhx.components import discovery
 from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_snake
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 _TEMPLATE_DIR = Path(__file__).parents[3] / "fixtures" / "templates"
 
@@ -105,11 +104,6 @@ def registry():
     }
     yield
     discovery._registry.mapping = {}
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 def test_direct_self_cycle_raises(session):

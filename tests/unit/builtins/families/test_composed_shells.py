@@ -46,7 +46,6 @@ from pyjinhx.components import discovery
 from pyjinhx.components.base import BaseComponent, Slot, _pascal_to_snake
 from pyjinhx.components.classless import component
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 FAMILY = (
     PJXCard,
@@ -133,12 +132,6 @@ def family_dir(tmp_path: Path):
     yield tmp_path
     discovery._registry.mapping = {}
     discovery._registry.template_dir = None
-
-
-@pytest.fixture
-def session() -> RenderSession:
-    """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession()
 
 
 def _tree(session, **kw) -> str:

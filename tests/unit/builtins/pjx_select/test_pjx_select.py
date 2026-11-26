@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 OPTIONS = [
     SelectOption(value="a", label="Apple"),
@@ -61,15 +60,6 @@ def test_exported_from_the_builtins_namespace():
 
     assert "PJXSelect" in builtins.__all__
     assert builtins.PJXSelect is PJXSelect
-
-
-@pytest.fixture
-def session():
-    """Loader rooted at "/" so absolute descriptor template paths resolve.
-
-    Same fixture shape as the sibling builtin tests.
-    """
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

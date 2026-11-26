@@ -13,14 +13,6 @@ from pydantic import ValidationError
 from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.builtins.pjx_notification import PJXNotification
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    # template_dir="/" so the descriptor's absolute template path resolves,
-    # same fixture shape as tests/unit/builtins/test_pjx_region_loader.py.
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

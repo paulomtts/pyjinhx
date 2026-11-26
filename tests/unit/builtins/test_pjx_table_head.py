@@ -5,12 +5,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table_head import PJXTableHead
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    return RenderSession()
 
 
 class TestFields:

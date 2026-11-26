@@ -5,11 +5,8 @@ never touches the native <select> or any selection state. Keyboard nav (#868)
 and the exhaustive cross-cutting suite (#869) are separate subtasks.
 """
 
-import pytest
-
 from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 FRUITS = [
     "Apple",
@@ -67,12 +64,6 @@ class TestFields:
         assert "max-height" not in panel_rule
         assert "overflow-y: auto" in options_rule
         assert "max-height" in options_rule
-
-
-@pytest.fixture
-def session():
-    """Loader rooted at "/" so absolute descriptor template paths resolve."""
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

@@ -13,7 +13,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 OPTIONS = [
     SelectOption(value="a", label="Apple"),
@@ -41,15 +40,6 @@ class TestMultipleFields:
             PJXSelect(id="s", name="fruit", options=OPTIONS, multiple=True, value="a")
         with pytest.raises(ValidationError):
             PJXSelect(id="s", name="fruit", options=OPTIONS, value=["a"])
-
-
-@pytest.fixture
-def session():
-    """Loader rooted at "/" so absolute descriptor template paths resolve.
-
-    Same fixture shape as the sibling builtin tests.
-    """
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

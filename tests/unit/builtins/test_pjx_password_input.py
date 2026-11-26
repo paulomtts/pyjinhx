@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_password_input import PJXPasswordInput
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
 
 
 class TestFields:
@@ -40,17 +39,6 @@ class TestFields:
         """
         with pytest.raises(ValidationError):
             PJXPasswordInput(id="p", **{"data-test": "yes"})  # type: ignore[arg-type]
-
-
-@pytest.fixture
-def session():
-    """Loader rooted at "/" so absolute descriptor template paths resolve.
-
-    ClassDescriptor.template_path is absolute and render() feeds it straight to
-    the session's FileSystemLoader; Jinja only resolves an absolute path when
-    the loader root is "/". Same fixture shape as the sibling builtin tests.
-    """
-    return RenderSession()
 
 
 def _html(session, **kwargs) -> str:

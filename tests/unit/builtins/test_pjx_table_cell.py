@@ -5,16 +5,6 @@ from pydantic import ValidationError
 
 from pyjinhx.builtins.pjx_table_cell import PJXTableCell
 from pyjinhx.rendering.pipeline import render
-from pyjinhx.rendering.session import RenderSession
-
-
-@pytest.fixture
-def session():
-    # Descriptor template paths are absolute (module-dir walk in base.py);
-    # FileSystemLoader reconstructs them by joining the search root with the
-    # split pieces, so the root "/" is the only search root that round-trips
-    # an absolute path back to itself.
-    return RenderSession()
 
 
 class TestFields:

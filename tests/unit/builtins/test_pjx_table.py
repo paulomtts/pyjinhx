@@ -11,11 +11,6 @@ from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 
 
-@pytest.fixture
-def session():
-    return RenderSession()
-
-
 class TestFields:
     def test_defaults(self):
         table = PJXTable(id="t1")
