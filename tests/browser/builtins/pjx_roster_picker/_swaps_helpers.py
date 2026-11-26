@@ -1,0 +1,268 @@
+"""Helpers shared by the split test files in this folder."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
+
+from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
+from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
+from pyjinhx.client import read_vendored_htmx
+from pyjinhx.rendering.pipeline import render
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Locator, Page, Route
+
+    from pyjinhx.rendering.session import RenderSession
+
+
+PICKER_DIR = (
+    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_picker"
+)
+
+
+CSS = (PICKER_DIR / "pjx_roster_picker.css").read_text(encoding="utf-8")
+
+
+ASSET = (PICKER_DIR / "pjx_roster_picker.js").read_text(encoding="utf-8")
+
+
+URL = "http://pjx.test/"
+
+
+CANDIDATES_URL = "http://pjx.test/candidates"
+
+
+CANDIDATES = "http://pjx.test/candidates*"
+
+
+SWAP_URL = "http://pjx.test/swap"
+
+
+HTMX_TAG = f"<script>{read_vendored_htmx()}</script>"
+
+
+ASSET_TAG = f"<script>{ASSET}</script>"
+
+
+OPEN = ("true", False)
+
+
+CLOSED = ("false", True)
+
+
+CHIP = (
+    "#p .pjx-roster-picker__chips > [data-pjx-roster-chip]"
+    ':has(> .pjx-roster-picker__chip-input[value="{value}"])'
+)
+
+
+# Listens on document, so every event the picker fires is heard wherever it
+# starts. connected tells a live picker from one a swap took away.
+RECORD_EVENTS = """() => {
+    window.events = [];
+    for (const name of ['before-pick', 'pick', 'before-remove', 'remove', 'change']) {
+        document.addEventListener(`pjx:roster-picker:${name}`, (event) => {
+            window.events.push({
+                name: name,
+                target: event.target.id,
+                connected: event.target.isConnected,
+            });
+        });
+    }
+}"""
+
+
+# The target is an element, not a selector, as an app swapping one chip
+# would pass it.
+SWAP = """([selector, swap]) => htmx.ajax('GET', '/swap', {
+    target: document.querySelector(selector),
+    swap: swap,
+})"""
+
+
+def _picker(session: RenderSession, picker_id: str = "p", **kwargs: Any) -> str:
+    return render(
+        PJXRosterPicker(
+            id=picker_id, name="members", candidates_url=CANDIDATES_URL, **kwargs
+        ),
+        session,
+    )
+
+
+def _item(value: str) -> PJXRosterItem:
+    return PJXRosterItem(value=value, label=value.upper())
+
+
+def _items(*values: str) -> list[PJXRosterItem]:
+    return [_item(value) for value in values]
+
+
+def _chip(session: RenderSession, value: str, label: str | None = None) -> str:
+    """A chip as an app re-renders it: its own id, named for the picker."""
+    return render(
+        PJXRosterChip(
+            id=f"chip-{value}",
+            value=value,
+            label=label or value.upper(),
+            name="members",
+        ),
+        session,
+    )
+
+
+def _answer(body: str) -> Callable[[Route], None]:
+    # One parameter: page.route passes a handler (route, request) when it takes two.
+    return lambda route: route.fulfill(body=body, content_type="text/html")
+
+
+def _serve(
+    page: Page,
+    session: RenderSession,
+    body: str,
+    *,
+    swap: str = "",
+    rows: str | None = None,
+) -> list[str]:
+    """Load body with the CSS and scripts, answer /swap with swap and every search with rows, return the search log."""
+    if rows is None:
+        rows = render(
+            PJXRosterResults(picker_id="p", items=_items("v0", "v1", "v2")), session
+        )
+    answer = rows
+    html = (
+        f'<html><head><meta charset="utf-8"><style>{CSS}</style></head>'
+        f"<body>{body}{HTMX_TAG}{ASSET_TAG}</body></html>"
+    )
+    requests: list[str] = []
+
+    def candidates(route: Route) -> None:
+        requests.append(route.request.url)
+        route.fulfill(body=answer, content_type="text/html")
+
+    page.route(URL, _answer(html))
+    page.route(CANDIDATES, candidates)
+    page.route(SWAP_URL, _answer(swap))
+    page.goto(URL)
+    page.wait_for_function("() => window.htmx")
+    return requests
+
+
+def _settle(page: Page) -> None:
+    """Let two animation frames and a short beat pass, so a pending handler has run."""
+    page.evaluate(
+        "() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))"
+    )
+    # There is no event for "did not fire", so proving a negative needs a beat.
+    page.wait_for_timeout(200)
+
+
+def _swap(page: Page, selector: str, swap: str) -> None:
+    """Swap /swap's answer into the element selector finds, through htmx.ajax."""
+    page.evaluate(SWAP, [selector, swap])
+
+
+def _input(page: Page, picker_id: str = "p") -> Locator:
+    return page.locator(f"#{picker_id} .pjx-roster-picker__input")
+
+
+def _state(page: Page, picker_id: str = "p") -> tuple[str, bool]:
+    """The input's aria-expanded and the mount's hidden, which must agree."""
+    expanded, hidden = page.evaluate(
+        """id => [
+            document.querySelector(`#${id} .pjx-roster-picker__input`).getAttribute('aria-expanded'),
+            document.getElementById(`${id}-results`).hidden,
+        ]""",
+        picker_id,
+    )
+    return expanded, hidden
+
+
+def _open(page: Page, picker_id: str = "p") -> None:
+    """Click the box and wait until the first search's rows are in.
+
+    Attached, not visible: a row for a chipped value arrives hidden."""
+    _input(page, picker_id).click()
+    page.wait_for_selector(
+        f"#{picker_id}-results [data-pjx-roster-pick]",
+        state="attached",
+        timeout=5000,
+    )
+    page.wait_for_function(
+        "id => document.querySelector(`#${id} .pjx-roster-picker__input`)"
+        ".getAttribute('data-last-query') === ''",
+        arg=picker_id,
+        timeout=5000,
+    )
+
+
+def _close_by_blur(page: Page) -> None:
+    """Take focus off the box, which closes the list and keeps its rows."""
+    page.evaluate("() => document.activeElement.blur()")
+    _settle(page)
+
+
+def _pick(page: Page, value: str, picker_id: str = "p") -> Locator:
+    return page.locator(
+        f'#{picker_id}-results [data-pjx-roster-pick][data-value="{value}"]'
+    )
+
+
+def _values(page: Page, picker_id: str = "p") -> list[str]:
+    """The selection as the public API reads it."""
+    return page.evaluate(
+        "id => pjx.rosterPicker.values(document.getElementById(id))", picker_id
+    )
+
+
+def _wait_values(page: Page, expected: list[str], picker_id: str = "p") -> None:
+    page.wait_for_function(
+        "([id, expected]) => JSON.stringify(pjx.rosterPicker.values("
+        "document.getElementById(id))) === JSON.stringify(expected)",
+        arg=[picker_id, expected],
+        timeout=5000,
+    )
+
+
+def _hidden_rows(page: Page, picker_id: str = "p") -> dict[str, bool]:
+    """Each result row's value mapped to its hidden flag."""
+    return page.evaluate(
+        """id => Object.fromEntries(Array.from(
+            document.querySelectorAll(`#${id}-results [data-pjx-roster-pick]`),
+            (row) => [row.dataset.value, row.hidden]
+        ))""",
+        picker_id,
+    )
+
+
+def _hint_hidden(page: Page, picker_id: str = "p") -> bool:
+    return page.evaluate(
+        "id => document.querySelector(`#${id} .pjx-roster-picker__hint`).hidden",
+        picker_id,
+    )
+
+
+def _validity(page: Page, picker_id: str = "p") -> str:
+    return page.evaluate(
+        "id => document.querySelector(`#${id} > .pjx-roster-picker__validity`).value",
+        picker_id,
+    )
+
+
+def _has_focus(locator: Locator) -> bool:
+    return locator.evaluate("el => el === document.activeElement")
+
+
+def _record_events(page: Page) -> None:
+    page.evaluate(RECORD_EVENTS)
+
+
+def _events(page: Page) -> list[dict[str, Any]]:
+    return page.evaluate("() => window.events")
+
+
+def _exclude(url: str) -> list[str]:
+    return parse_qs(urlsplit(url).query, keep_blank_values=True)["exclude"]
