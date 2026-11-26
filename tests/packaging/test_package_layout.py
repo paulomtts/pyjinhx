@@ -14,7 +14,7 @@ import pytest
 import pyjinhx
 import pyjinhx.builtins
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 EXPECTED_EXPORTS = {
     # components & rendering
@@ -106,7 +106,7 @@ def test_no_tracked_file_mentions_the_v0_staging_package():
         "CHANGELOG.md",
         "docs/migration.md",
         "docs/superpowers/",
-        "tests/test_package_layout.py",
+        "tests/packaging/test_package_layout.py",
     }
     offenders = []
     for rel in tracked:
@@ -182,7 +182,7 @@ def test_no_tracked_file_mentions_pyjinhx2():
         text=True,
         check=True,
     ).stdout.split()
-    skip = {"CHANGELOG.md", "docs/superpowers/plans", "tests/test_package_layout.py"}
+    skip = {"CHANGELOG.md", "docs/superpowers/plans", "tests/packaging/test_package_layout.py"}
     offenders = []
     for rel in tracked:
         if any(rel.startswith(s) for s in skip):
