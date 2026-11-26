@@ -13,6 +13,10 @@ Deep imports from `pyjinhx.builtins.ui.<name>` no longer exist. Replace
 `from pyjinhx.builtins.ui.pjx_button import PJXButton` with
 `from pyjinhx.builtins import PJXButton`.
 
+Builtin asset paths and URLs lose the `ui/` segment too
+(`.../builtins/pjx_button/pjx_button.<hash>.css`); update static copies, mounted
+routes and CSP rules that pin them by path.
+
 ## 1.16.x → 1.17.0 (fewer files)
 
 Nothing here is required: `.py` + `.pjx` (+ `.css` / `.js`) keeps working, and moving
