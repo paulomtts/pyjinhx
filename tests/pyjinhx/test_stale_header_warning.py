@@ -21,7 +21,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.components.props_header import build_component_class, parse_props_header
 from pyjinhx.rendering.pipeline import render_level
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 class StaleCard(BaseComponent):
@@ -71,10 +71,10 @@ def _wire(cls: type[BaseComponent], *, stale: bool) -> None:
     The real descriptor's template_path is an absolute path to a ``.pjx``
     file, which the test session's loader would still resolve by name; the
     render-path tests care only about the flag, so they swap in a descriptor
-    naming a template under tests/templates instead.
+    naming a template under tests/fixtures/templates instead.
     """
     cls.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "stale_render.html",
+        template_path=_TEMPLATE_DIR / "basic/stale_render.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -143,7 +143,7 @@ def test_classless_component_never_warns(render_session, caplog):
     assert cls.__pjx_descriptor__.has_stale_def_header is False
 
     cls.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "stale_render.html",
+        template_path=_TEMPLATE_DIR / "basic/stale_render.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),

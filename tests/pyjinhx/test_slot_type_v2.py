@@ -18,7 +18,7 @@ from pyjinhx.components.base import (
 from pyjinhx.rendering.session import RenderSession
 from pyjinhx.rendering.template_context import build_context
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 class TestPjxSlotMarker:
@@ -221,8 +221,8 @@ class TestSlotTruthinessInTemplates:
         class Box(BaseComponent):
             content: Slot = ""
 
-        self._describe(Leaf, "div.html", ())
-        self._describe(Box, "slot_if.html", {"content"})
+        self._describe(Leaf, "basic/div.html", ())
+        self._describe(Box, "slots/slot_if.html", {"content"})
 
         session = RenderSession()
         assert "HAS" in render(Box(content=Leaf()), session)
@@ -234,7 +234,7 @@ class TestSlotTruthinessInTemplates:
         class Box2(BaseComponent):
             content: Slot = ""
 
-        self._describe(Box2, "slot_if.html", {"content"})
+        self._describe(Box2, "slots/slot_if.html", {"content"})
         session = RenderSession()
         assert "NONE" in render(Box2(content=""), session)
 
@@ -267,8 +267,8 @@ class TestSlotInterpolation:
         class InterpBox(BaseComponent):
             content: Slot = ""
 
-        self._describe(InterpLeaf, "slot_leaf.html", ())
-        self._describe(InterpBox, "slot_interp.html", {"content"})
+        self._describe(InterpLeaf, "slots/slot_leaf.html", ())
+        self._describe(InterpBox, "slots/slot_interp.html", {"content"})
 
         session = RenderSession()
         html = render(InterpBox(content=InterpLeaf(title="hello")), session)
@@ -286,7 +286,7 @@ class TestSlotInterpolation:
         class StringBox(BaseComponent):
             content: Slot = ""
 
-        self._describe(StringBox, "slot_interp.html", {"content"})
+        self._describe(StringBox, "slots/slot_interp.html", {"content"})
         session = RenderSession()
         html = render(StringBox(content="<b>x</b>"), session)
 
@@ -307,8 +307,8 @@ class TestSlotInterpolation:
         class CountingBox(BaseComponent):
             content: Slot = ""
 
-        self._describe(CountingLeaf, "slot_leaf.html", ())
-        self._describe(CountingBox, "slot_interp.html", {"content"})
+        self._describe(CountingLeaf, "slots/slot_leaf.html", ())
+        self._describe(CountingBox, "slots/slot_interp.html", {"content"})
 
         import pyjinhx.rendering.pipeline as render_module
 
@@ -368,7 +368,7 @@ class TestNullableSlotRendersRaw:
         # it, is what ties this assertion to slot detection: a descriptor built by
         # hand would render raw no matter what `_is_slot_field` decided.
         NullableBox.__pjx_descriptor__ = ClassDescriptor(
-            template_path=_TEMPLATE_DIR / "slot_interp.html",
+            template_path=_TEMPLATE_DIR / "slots/slot_interp.html",
             slot_fields=_resolve_slot_fields(NullableBox),
             children_field=None,
             css_paths=(),
@@ -574,7 +574,7 @@ class TestMarkupExemptionIsScopedToSlots:
             label: str = ""
 
         Card.__pjx_descriptor__ = self.descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
 
         context = build_context(
@@ -589,7 +589,7 @@ class TestMarkupExemptionIsScopedToSlots:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = self.descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
         session = RenderSession()
         template = session.jinja_env.from_string("{{ label }}")

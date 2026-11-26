@@ -13,11 +13,11 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession, request_scope
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def _make_component(template_path: str):
-    """Build a childless component class wired to a template in tests/templates."""
+    """Build a childless component class wired to a template in tests/fixtures/templates."""
 
     class DivComp(BaseComponent):
         title: str = "Hello"
@@ -38,7 +38,7 @@ def _make_component(template_path: str):
 # Test 1: render(component) returns str, not RenderedLevel.
 def test_render_returns_str(render_session):
     """render(component) returns str, not RenderedLevel."""
-    DivComp = _make_component("div.html")
+    DivComp = _make_component("basic/div.html")
     component = DivComp()
 
     result = render(component, render_session)
@@ -55,7 +55,7 @@ def test_render_roundtrips_template_output(render_session):
         title: str = "Test"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "roundtrip.html",
+        template_path=_TEMPLATE_DIR / "basic/roundtrip.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -157,7 +157,7 @@ def test_render_missing_template_raises(render_session):
 # Test 6: multi-root template raises ValueError through the public API.
 def test_render_multiroot_raises(render_session):
     """Multi-root template propagates ValueError unchanged."""
-    BadComp = _make_component("bad.html")
+    BadComp = _make_component("basic/bad.html")
     component = BadComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
@@ -167,7 +167,7 @@ def test_render_multiroot_raises(render_session):
 # Test 7: zero-root template raises ValueError through the public API.
 def test_render_zeroroot_raises(render_session):
     """Zero-root (whitespace-only) template propagates ValueError unchanged."""
-    EmptyComp = _make_component("empty.html")
+    EmptyComp = _make_component("basic/empty.html")
     component = EmptyComp()
 
     with pytest.raises(ValueError, match="must render exactly one root element"):
@@ -178,7 +178,7 @@ def test_render_zeroroot_raises(render_session):
 # exact session, ambient context or not.
 def test_component_render_with_explicit_session(render_session):
     """component.render(session=s) matches render(component, s)."""
-    DivComp = _make_component("div.html")
+    DivComp = _make_component("basic/div.html")
 
     assert DivComp().render(session=render_session) == render(DivComp(), render_session)
 
@@ -187,7 +187,7 @@ def test_component_render_with_explicit_session(render_session):
 # session up off the ContextVar.
 def test_component_render_uses_ambient_session(tmp_path):
     """Inside request_scope(), no-arg render() uses the scope's session."""
-    DivComp = _make_component("div.html")
+    DivComp = _make_component("basic/div.html")
 
     with request_scope() as session:
         ambient = DivComp().render()
@@ -206,6 +206,6 @@ def test_component_render_uses_ambient_session(tmp_path):
 def test_component_render_without_session(monkeypatch):
     """Outside a scope, no-arg render() matches render(component, None)."""
     monkeypatch.chdir(Path(__file__).parent.parent)  # tests/, so "templates" resolves
-    DivComp = _make_component("div.html")
+    DivComp = _make_component("basic/div.html")
 
     assert DivComp().render() == render(DivComp(), None)

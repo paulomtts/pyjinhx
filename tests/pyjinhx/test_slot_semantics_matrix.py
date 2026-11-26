@@ -24,11 +24,11 @@ from pyjinhx.rendering.template_context import (
     collect_slot_tokens,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
-    """A ClassDescriptor pointing at a fixture template under tests/templates."""
+    """A ClassDescriptor pointing at a fixture template under tests/fixtures/templates."""
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
@@ -48,7 +48,7 @@ class Leaf(BaseComponent):
     text: str = "x"
 
 
-Leaf.__pjx_descriptor__ = descriptor("nest_leaf.html", frozenset())
+Leaf.__pjx_descriptor__ = descriptor("nesting/nest_leaf.html", frozenset())
 
 
 def render_expr(expr: str, component: BaseComponent) -> str:
@@ -70,7 +70,7 @@ class TestHarness:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
 
         assert (
@@ -88,7 +88,7 @@ class TestTruthinessWithInterpolation:
         return Card
 
     def test_guarded_interpolation_renders_the_child_exactly_once(self):
-        Card = self.card("nest_if.html", frozenset({"content"}))
+        Card = self.card("nesting/nest_if.html", frozenset({"content"}))
 
         output = render(Card(content=Leaf(text="c")), session())
 
@@ -102,14 +102,14 @@ class TestTruthinessWithInterpolation:
         # RenderedLevel; the count is the double-render check.
         from pyjinhx.rendering.segments import RenderedLevel
 
-        Card = self.card("nest_if.html", frozenset({"content"}))
+        Card = self.card("nesting/nest_if.html", frozenset({"content"}))
 
         level = render_level(Card(content=Leaf(text="c")), session())
 
         assert len([s for s in level.segments if isinstance(s, RenderedLevel)]) == 1
 
     def test_an_empty_slot_takes_the_else_branch_without_interpolating(self):
-        Card = self.card("nest_if.html", frozenset({"content"}))
+        Card = self.card("nesting/nest_if.html", frozenset({"content"}))
 
         output = render(Card(content=""), session())
 
@@ -119,7 +119,7 @@ class TestTruthinessWithInterpolation:
     def test_a_string_slot_beside_a_component_slot_stays_raw_html(self):
         # ADR 0003 constraint 2: plain-string Slot fields stay raw-HTML-capable.
         # Fixed by wrapping str slot values in Markup (see _wrap_slot_value).
-        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+        Card = self.card("slots/slot_mixed_kinds.html", frozenset({"content", "note"}))
 
         output = render(Card(content=Leaf(text="c"), note="<em>raw</em>"), session())
 
@@ -128,7 +128,7 @@ class TestTruthinessWithInterpolation:
         )
 
     def test_a_string_slot_is_not_wrapped_in_a_component_node(self):
-        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+        Card = self.card("slots/slot_mixed_kinds.html", frozenset({"content", "note"}))
 
         context = build_context(
             Card(content=Leaf(text="c"), note="<em>raw</em>"),
@@ -142,7 +142,7 @@ class TestTruthinessWithInterpolation:
     def test_string_slot_operations_are_not_forbidden(self):
         # Constraint 2: this ADR does not touch string-valued slots, so the
         # ops that are errors on a component slot stay legal here.
-        Card = self.card("slot_mixed_kinds.html", frozenset({"content", "note"}))
+        Card = self.card("slots/slot_mixed_kinds.html", frozenset({"content", "note"}))
         card = Card(content=Leaf(text="c"), note="<em>raw</em>")
 
         assert render_expr("{{ note|length }}", card) == "12"
@@ -155,7 +155,9 @@ def opaque_card() -> BaseComponent:
     class Card(BaseComponent):
         content: Slot = ""
 
-    Card.__pjx_descriptor__ = descriptor("nest_content.html", frozenset({"content"}))
+    Card.__pjx_descriptor__ = descriptor(
+        "nesting/nest_content.html", frozenset({"content"})
+    )
     return Card(content=Leaf(text="c"))
 
 
@@ -188,7 +190,7 @@ class TestForbiddenOperations:
 
         message = str(excinfo.value)
         assert message.startswith(
-            f"Card (template: {_TEMPLATE_DIR / 'nest_content.html'}):"
+            f"Card (template: {_TEMPLATE_DIR / 'nesting/nest_content.html'}):"
         )
 
     def test_the_error_points_at_the_two_supported_forms(self):
@@ -284,7 +286,7 @@ class TestInferenceWithDirectNesting:
 
         inferred = Card.__pjx_descriptor__.children_field
         Card.__pjx_descriptor__ = descriptor(
-            "slot_header_content.html",
+            "slots/slot_header_content.html",
             frozenset({"content", "header"}),
             inferred,
         )
@@ -339,7 +341,7 @@ class Titled(BaseComponent):
     title: str = "x"
 
 
-Titled.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset())
+Titled.__pjx_descriptor__ = descriptor("slots/slot_leaf.html", frozenset())
 
 
 class TestCollectionsMatrix:
@@ -351,7 +353,7 @@ class TestCollectionsMatrix:
         return Card
 
     def test_a_list_slot_interpolates_every_entry(self):
-        Card = self.card_class("slot_list.html")
+        Card = self.card_class("slots/slot_list.html")
 
         output = render(Card(content=[Titled(title="a"), Titled(title="b")]), session())
 
@@ -361,7 +363,7 @@ class TestCollectionsMatrix:
         )
 
     def test_a_dict_slot_interpolates_every_value_with_its_key(self):
-        Card = self.card_class("slot_dict.html")
+        Card = self.card_class("slots/slot_dict.html")
 
         output = render(
             Card(content={"one": Titled(title="a"), "two": Titled(title="b")}),
@@ -376,13 +378,13 @@ class TestCollectionsMatrix:
     def test_the_list_container_itself_stays_iterable_and_measurable(self):
         # Constraint 4: opacity is per entry; wrapping the container would
         # make `{% for %}` and `|length` over it impossible.
-        Card = self.card_class("slot_list.html")
+        Card = self.card_class("slots/slot_list.html")
         card = Card(content=[Titled(title="a"), Titled(title="b")])
 
         assert render_expr("{{ content|length }}", card) == "2"
 
     def test_the_dict_container_supports_values_iteration(self):
-        Card = self.card_class("slot_dict.html")
+        Card = self.card_class("slots/slot_dict.html")
         card = Card(content={"one": Titled(title="a")})
 
         rendered = render_expr(
@@ -392,13 +394,13 @@ class TestCollectionsMatrix:
         assert rendered == "hit"
 
     def test_a_single_list_entry_is_as_opaque_as_a_scalar_slot(self):
-        Card = self.card_class("slot_list_len.html")
+        Card = self.card_class("slots/slot_list_len.html")
 
         with pytest.raises(TypeError, match=r"slot 'content' holds a rendered"):
             render(Card(content=[Titled(title="a")]), session())
 
     def test_a_single_dict_entry_is_as_opaque_as_a_scalar_slot(self):
-        Card = self.card_class("slot_dict.html")
+        Card = self.card_class("slots/slot_dict.html")
         card = Card(content={"one": Titled(title="a")})
 
         with pytest.raises(TypeError, match=r"`\|length`"):
@@ -407,7 +409,7 @@ class TestCollectionsMatrix:
             )
 
     def test_each_entry_is_its_own_node_carrying_the_owner_field_name(self):
-        Card = self.card_class("slot_list.html")
+        Card = self.card_class("slots/slot_list.html")
         a, b = Titled(title="a"), Titled(title="b")
 
         value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
@@ -420,21 +422,21 @@ class TestCollectionsMatrix:
         assert [v.component for v in value] == [a, b]
 
     def test_props_on_list_entries_expose_only_their_own_fields(self):
-        Card = self.card_class("slot_props_list.html")
+        Card = self.card_class("slots/slot_props_list.html")
 
         output = render(Card(content=[Titled(title="a"), Titled(title="b")]), session())
 
         assert output == '<div class="list"><i>a</i><i>b</i></div>'
 
     def test_props_on_dict_entries_expose_only_their_own_fields(self):
-        Card = self.card_class("slot_props_dict.html")
+        Card = self.card_class("slots/slot_props_dict.html")
 
         output = render(Card(content={"one": Titled(title="a")}), session())
 
         assert output == '<div class="map"><b>one</b><i>a</i></div>'
 
     def test_an_entrys_props_do_not_leak_a_sibling_entrys_values(self):
-        Card = self.card_class("slot_props_list.html")
+        Card = self.card_class("slots/slot_props_list.html")
         a, b = Titled(title="a"), Titled(title="b")
 
         value = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)["content"]
@@ -454,7 +456,7 @@ class TestPropsBoundaries:
     def test_reading_props_renders_only_the_owner(self):
         import pyjinhx.rendering.pipeline as render_module
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
         seen: list[str] = []
         original = render_module.render_level
 
@@ -471,7 +473,7 @@ class TestPropsBoundaries:
         assert seen == ["Card"]
 
     def test_reading_props_leaves_no_slot_token_behind(self):
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         level = render_level(Card(content=Titled(title="a")), session())
         text = "".join(s for s in level.segments if isinstance(s, str))
@@ -479,7 +481,7 @@ class TestPropsBoundaries:
         assert "pjx-slot-" not in text
 
     def test_stringifying_the_props_view_raises_the_opacity_error(self):
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         with pytest.raises(TypeError, match=r"slot 'content' holds a rendered"):
             render_expr("{{ content.props }}", Card(content=Titled(title="a")))
@@ -503,7 +505,7 @@ class TestPropsBoundaries:
     def test_len_and_iteration_on_props_raise_a_different_typeerror_than_str(
         self, expr, match
     ):
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         with pytest.raises(TypeError, match=match):
             render_expr(expr, Card(content=Titled(title="a")))
@@ -528,14 +530,14 @@ class TestNestedPropsOpacity:
             content: Slot = ""
 
         Inner.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
 
         class Card(BaseComponent):
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
         return Card(content=Inner(content=Leaf(text="deep")))
 
@@ -590,7 +592,7 @@ class TestCrossRenderIsolation:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
         return Card
 
@@ -644,7 +646,7 @@ class TestStringSlotStaysRawHtml:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
         return Card
 

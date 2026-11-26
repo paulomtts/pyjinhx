@@ -10,7 +10,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
@@ -30,21 +30,21 @@ class PJXChild(BaseComponent):
     label: str = ""
 
 
-PJXChild.__pjx_descriptor__ = descriptor_for(PJXChild, "splice_child.html")
+PJXChild.__pjx_descriptor__ = descriptor_for(PJXChild, "splice/splice_child.html")
 
 
 class PJXParent(BaseComponent):
     pass
 
 
-PJXParent.__pjx_descriptor__ = descriptor_for(PJXParent, "splice_parent.html")
+PJXParent.__pjx_descriptor__ = descriptor_for(PJXParent, "splice/splice_parent.html")
 
 
 class PJXPlain(BaseComponent):
     pass
 
 
-PJXPlain.__pjx_descriptor__ = descriptor_for(PJXPlain, "splice_plain.html")
+PJXPlain.__pjx_descriptor__ = descriptor_for(PJXPlain, "splice/splice_plain.html")
 
 
 @pytest.fixture(autouse=True)
@@ -88,14 +88,16 @@ class PJXSiblings(BaseComponent):
     pass
 
 
-PJXSiblings.__pjx_descriptor__ = descriptor_for(PJXSiblings, "splice_siblings.html")
+PJXSiblings.__pjx_descriptor__ = descriptor_for(
+    PJXSiblings, "splice/splice_siblings.html"
+)
 
 
 class PJXMixed(BaseComponent):
     pass
 
 
-PJXMixed.__pjx_descriptor__ = descriptor_for(PJXMixed, "splice_mixed.html")
+PJXMixed.__pjx_descriptor__ = descriptor_for(PJXMixed, "splice/splice_mixed.html")
 
 
 def test_each_sibling_childref_gets_its_own_rendered_level(session):
@@ -127,14 +129,18 @@ class PJXBadChild(BaseComponent):
     pass
 
 
-PJXBadChild.__pjx_descriptor__ = descriptor_for(PJXBadChild, "splice_bad_child.html")
+PJXBadChild.__pjx_descriptor__ = descriptor_for(
+    PJXBadChild, "splice/splice_bad_child.html"
+)
 
 
 class PJXBadParent(BaseComponent):
     pass
 
 
-PJXBadParent.__pjx_descriptor__ = descriptor_for(PJXBadParent, "splice_bad_parent.html")
+PJXBadParent.__pjx_descriptor__ = descriptor_for(
+    PJXBadParent, "splice/splice_bad_parent.html"
+)
 
 
 def test_serialize_nests_the_spliced_child_in_the_parent_output(session):

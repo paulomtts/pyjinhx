@@ -28,7 +28,7 @@ from pyjinhx.rendering.session import (
     request_scope,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def test_make_key_joins_type_and_id_with_underscore():
@@ -217,7 +217,7 @@ class RegisteredWidget(ReactiveComponent):
 
 
 RegisteredWidget.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "reactive_widget.html",
+    template_path=_TEMPLATE_DIR / "reactive/reactive_widget.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),
@@ -325,7 +325,7 @@ class LiteralIdWidget(ReactiveComponent):
 
 
 LiteralIdWidget.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "reactive_widget.html",
+    template_path=_TEMPLATE_DIR / "reactive/reactive_widget.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),

@@ -9,7 +9,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor, _pascal_to_s
 from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
@@ -78,19 +78,19 @@ class PJXRowL2(BaseComponent):
 
 
 TEMPLATES = {
-    PJXCycleSelf: "cycle_self.html",
-    PJXCycleA: "cycle_a.html",
-    PJXCycleB: "cycle_b.html",
-    PJXCycleLongA: "cycle_long_a.html",
-    PJXCycleLongB: "cycle_long_b.html",
-    PJXCycleLongC: "cycle_long_c.html",
-    PJXAcyclicA: "cycle_acyclic_a.html",
-    PJXAcyclicB: "cycle_acyclic_b.html",
-    PJXAcyclicC: "cycle_acyclic_c.html",
-    PJXDiamond: "cycle_diamond.html",
-    PJXPassthroughCycle: "cycle_passthrough.html",
-    PJXCardL2: "cycle_card_l2.html",
-    PJXRowL2: "cycle_row_l2.html",
+    PJXCycleSelf: "cycle/cycle_self.html",
+    PJXCycleA: "cycle/cycle_a.html",
+    PJXCycleB: "cycle/cycle_b.html",
+    PJXCycleLongA: "cycle/cycle_long_a.html",
+    PJXCycleLongB: "cycle/cycle_long_b.html",
+    PJXCycleLongC: "cycle/cycle_long_c.html",
+    PJXAcyclicA: "cycle/cycle_acyclic_a.html",
+    PJXAcyclicB: "cycle/cycle_acyclic_b.html",
+    PJXAcyclicC: "cycle/cycle_acyclic_c.html",
+    PJXDiamond: "cycle/cycle_diamond.html",
+    PJXPassthroughCycle: "cycle/cycle_passthrough.html",
+    PJXCardL2: "cycle/cycle_card_l2.html",
+    PJXRowL2: "cycle/cycle_row_l2.html",
 }
 
 for _cls, _template in TEMPLATES.items():
@@ -137,7 +137,7 @@ def test_cycle_error_keeps_the_existing_prefix(session):
     with pytest.raises(ValueError) as err:
         render(PJXCycleA(), session)
     assert str(err.value).startswith(
-        f"PJXCycleA (template: {_TEMPLATE_DIR / 'cycle_a.html'}): "
+        f"PJXCycleA (template: {_TEMPLATE_DIR / 'cycle/cycle_a.html'}): "
     )
 
 

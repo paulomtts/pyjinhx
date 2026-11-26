@@ -15,11 +15,11 @@ from pyjinhx.rendering.pipeline import render
 from pyjinhx.rendering.session import RenderSession
 from pyjinhx.rendering.template_context import ComponentNode, build_context
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
-    """A ClassDescriptor pointing at a fixture template under tests/templates."""
+    """A ClassDescriptor pointing at a fixture template under tests/fixtures/templates."""
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
@@ -39,7 +39,7 @@ class Leaf(BaseComponent):
     title: str = "x"
 
 
-Leaf.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset())
+Leaf.__pjx_descriptor__ = descriptor("slots/slot_leaf.html", frozenset())
 
 
 class TestAliasUnion:
@@ -140,7 +140,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
         a, b = Leaf(title="a"), Leaf(title="b")
 
         context = build_context(Card(content=[a, b]), Card.__pjx_descriptor__)
@@ -157,7 +159,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
         a = Leaf(title="a")
 
         context = build_context(Card(content={"one": a}), Card.__pjx_descriptor__)
@@ -174,7 +178,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         context = build_context(
             Card(content=[Leaf(title="a")]), Card.__pjx_descriptor__
@@ -182,14 +188,16 @@ class TestBuildContext:
         node = context["content"][0]
 
         assert node.owner_name == "Card"
-        assert node.owner_template == _TEMPLATE_DIR / "slot_list.html"
+        assert node.owner_template == _TEMPLATE_DIR / "slots/slot_list.html"
         assert node.field_name == "content"
 
     def test_an_empty_list_slot_stays_an_empty_list(self):
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         context = build_context(Card(content=[]), Card.__pjx_descriptor__)
 
@@ -199,7 +207,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         context = build_context(Card(content={}), Card.__pjx_descriptor__)
 
@@ -209,7 +219,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_interp.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_interp.html", frozenset({"content"})
+        )
         a = Leaf(title="a")
 
         context = build_context(Card(content=a), Card.__pjx_descriptor__)
@@ -221,7 +233,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_interp.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_interp.html", frozenset({"content"})
+        )
 
         context = build_context(Card(content="<b>raw</b>"), Card.__pjx_descriptor__)
 
@@ -231,7 +245,9 @@ class TestBuildContext:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
         a = Leaf(title="a")
         card = Card(content=[a])
 
@@ -246,7 +262,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         output = render(Card(content=[Leaf(title="a"), Leaf(title="b")]), session())
 
@@ -260,7 +278,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         output = render(Card(content=[Leaf(title="a"), Leaf(title="b")]), session())
 
@@ -271,7 +291,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         assert render(Card(content=[]), session()) == '<div class="list"></div>'
 
@@ -282,7 +304,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         level = render_level(
             Card(content=[Leaf(title="a"), Leaf(title="b")]), session()
@@ -302,7 +326,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         original = render_module.render_level
         seen: list[str] = []
@@ -323,7 +349,9 @@ class TestListRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
         leaf = Leaf(title="dup")
 
         output = render(Card(content=[leaf, leaf]), session())
@@ -339,13 +367,15 @@ class TestListRendering:
             inner: Slot = ""
 
         Wrap.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), "inner"
+            "nesting/nest_wrap.html", frozenset({"inner"}), "inner"
         )
 
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         output = render(Card(content=[Wrap(inner=Leaf(title="deep"))]), session())
 
@@ -360,7 +390,9 @@ class TestDictRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         output = render(
             Card(content={"one": Leaf(title="a"), "two": Leaf(title="b")}), session()
@@ -379,7 +411,9 @@ class TestDictRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         output = render(Card(content={"<x>": Leaf(title="a")}), session())
 
@@ -390,7 +424,9 @@ class TestDictRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         assert render(Card(content={}), session()) == '<div class="map"></div>'
 
@@ -398,7 +434,9 @@ class TestDictRendering:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         output = render(
             Card(content={"z": Leaf(title="z"), "a": Leaf(title="a")}), session()
@@ -415,7 +453,7 @@ class TestEntryOpacity:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "slot_list_len.html", frozenset({"content"})
+            "slots/slot_list_len.html", frozenset({"content"})
         )
 
         with pytest.raises(
@@ -428,7 +466,7 @@ class TestEntryOpacity:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "slot_list_len.html", frozenset({"content"})
+            "slots/slot_list_len.html", frozenset({"content"})
         )
 
         with pytest.raises(TypeError) as excinfo:
@@ -442,7 +480,9 @@ class TestEntryOpacity:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_dict.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_dict.html", frozenset({"content"})
+        )
 
         context = build_context(
             Card(content={"k": Leaf(title="a")}), Card.__pjx_descriptor__
@@ -459,7 +499,9 @@ class TestEntryOpacity:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_list.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_list.html", frozenset({"content"})
+        )
 
         context = build_context(
             Card(content=[Leaf(title="a"), Leaf(title="b")]), Card.__pjx_descriptor__
@@ -474,7 +516,9 @@ class TestCollectionTruthiness:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_if.html", frozenset({"content"})
+        )
 
         assert render(Card(content=[Leaf(title="a")]), session()) == "<div>HAS</div>"
 
@@ -482,7 +526,9 @@ class TestCollectionTruthiness:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_if.html", frozenset({"content"})
+        )
 
         assert render(Card(content=[]), session()) == "<div>NONE</div>"
 
@@ -490,7 +536,9 @@ class TestCollectionTruthiness:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_if.html", frozenset({"content"})
+        )
 
         assert (
             render(Card(content={"k": Leaf(title="a")}), session()) == "<div>HAS</div>"
@@ -500,7 +548,9 @@ class TestCollectionTruthiness:
         class Card(BaseComponent):
             content: Slot = ""
 
-        Card.__pjx_descriptor__ = descriptor("slot_if.html", frozenset({"content"}))
+        Card.__pjx_descriptor__ = descriptor(
+            "slots/slot_if.html", frozenset({"content"})
+        )
 
         assert render(Card(content={}), session()) == "<div>NONE</div>"
 

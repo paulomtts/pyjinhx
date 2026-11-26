@@ -16,7 +16,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel, serialize
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
@@ -36,21 +36,27 @@ class PJXNestedLeaf(BaseComponent):
     label: str = ""
 
 
-PJXNestedLeaf.__pjx_descriptor__ = descriptor_for(PJXNestedLeaf, "nested_leaf.html")
+PJXNestedLeaf.__pjx_descriptor__ = descriptor_for(
+    PJXNestedLeaf, "nesting/nested_leaf.html"
+)
 
 
 class PJXNestedMid(BaseComponent):
     label: str = ""
 
 
-PJXNestedMid.__pjx_descriptor__ = descriptor_for(PJXNestedMid, "nested_mid.html")
+PJXNestedMid.__pjx_descriptor__ = descriptor_for(
+    PJXNestedMid, "nesting/nested_mid.html"
+)
 
 
 class PJXNestedRoot(BaseComponent):
     pass
 
 
-PJXNestedRoot.__pjx_descriptor__ = descriptor_for(PJXNestedRoot, "nested_root.html")
+PJXNestedRoot.__pjx_descriptor__ = descriptor_for(
+    PJXNestedRoot, "nesting/nested_root.html"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -104,7 +110,7 @@ class PJXNestedBranches(BaseComponent):
 
 
 PJXNestedBranches.__pjx_descriptor__ = descriptor_for(
-    PJXNestedBranches, "nested_branches.html"
+    PJXNestedBranches, "nesting/nested_branches.html"
 )
 
 
@@ -136,14 +142,18 @@ class PJXMixedMid(BaseComponent):
     label: str = ""
 
 
-PJXMixedMid.__pjx_descriptor__ = descriptor_for(PJXMixedMid, "nested_mixed_mid.html")
+PJXMixedMid.__pjx_descriptor__ = descriptor_for(
+    PJXMixedMid, "nesting/nested_mixed_mid.html"
+)
 
 
 class PJXMixedRoot(BaseComponent):
     pass
 
 
-PJXMixedRoot.__pjx_descriptor__ = descriptor_for(PJXMixedRoot, "nested_mixed_root.html")
+PJXMixedRoot.__pjx_descriptor__ = descriptor_for(
+    PJXMixedRoot, "nesting/nested_mixed_root.html"
+)
 
 
 def test_registered_and_unregistered_tags_coexist_at_the_root(session):
@@ -180,7 +190,7 @@ class PJXLoopRoot(BaseComponent):
     items: list[str] = Field(default_factory=list)
 
 
-PJXLoopRoot.__pjx_descriptor__ = descriptor_for(PJXLoopRoot, "nested_loop.html")
+PJXLoopRoot.__pjx_descriptor__ = descriptor_for(PJXLoopRoot, "nesting/nested_loop.html")
 
 
 def test_loop_generated_tags_become_rendered_levels(session):
@@ -219,14 +229,18 @@ class PJXFullMid(BaseComponent):
     item: str = ""
 
 
-PJXFullMid.__pjx_descriptor__ = descriptor_for(PJXFullMid, "nested_full_mid.html")
+PJXFullMid.__pjx_descriptor__ = descriptor_for(
+    PJXFullMid, "nesting/nested_full_mid.html"
+)
 
 
 class PJXFullRoot(BaseComponent):
     rows: list[str] = Field(default_factory=list)
 
 
-PJXFullRoot.__pjx_descriptor__ = descriptor_for(PJXFullRoot, "nested_full_root.html")
+PJXFullRoot.__pjx_descriptor__ = descriptor_for(
+    PJXFullRoot, "nesting/nested_full_root.html"
+)
 
 
 def test_generated_mixed_three_level_tree_serializes_end_to_end(session):
@@ -269,21 +283,25 @@ class PJXBadLeaf(BaseComponent):
     pass
 
 
-PJXBadLeaf.__pjx_descriptor__ = descriptor_for(PJXBadLeaf, "nested_bad_leaf.html")
+PJXBadLeaf.__pjx_descriptor__ = descriptor_for(
+    PJXBadLeaf, "nesting/nested_bad_leaf.html"
+)
 
 
 class PJXBadMid(BaseComponent):
     pass
 
 
-PJXBadMid.__pjx_descriptor__ = descriptor_for(PJXBadMid, "nested_bad_mid.html")
+PJXBadMid.__pjx_descriptor__ = descriptor_for(PJXBadMid, "nesting/nested_bad_mid.html")
 
 
 class PJXBadRoot(BaseComponent):
     pass
 
 
-PJXBadRoot.__pjx_descriptor__ = descriptor_for(PJXBadRoot, "nested_bad_root.html")
+PJXBadRoot.__pjx_descriptor__ = descriptor_for(
+    PJXBadRoot, "nesting/nested_bad_root.html"
+)
 
 
 def test_grandchild_render_failure_propagates_unchanged(session):

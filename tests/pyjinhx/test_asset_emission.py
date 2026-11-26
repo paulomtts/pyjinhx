@@ -5,7 +5,7 @@ from pathlib import Path
 from pyjinhx.rendering.assets import BUILTIN_ORIGIN_ATTR, AssetMode, asset_token
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def test_asset_mode_members_are_inline_none_and_link():
@@ -201,13 +201,13 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import serialize
 from pyjinhx.rendering.session import accumulate_assets, request_scope
 
-TEMPLATES = str(Path(__file__).parent.parent / "templates")
+TEMPLATES = str(Path(__file__).parent.parent / "fixtures" / "templates")
 
 
 def _plain_descriptor(owner: type) -> ClassDescriptor:
     """Hand-built descriptor pointed at the shared plain_div.html fixture."""
     return ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "plain_div.html",
+        template_path=_TEMPLATE_DIR / "basic/plain_div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -558,7 +558,7 @@ class _NestedParent(BaseComponent):
 
 
 _NestedParent.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "nested_emit_parent.html",
+    template_path=_TEMPLATE_DIR / "nesting/nested_emit_parent.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),

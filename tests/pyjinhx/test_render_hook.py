@@ -14,7 +14,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import RenderedLevel
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
@@ -34,21 +34,27 @@ class PJXNestedLeaf(BaseComponent):
     label: str = ""
 
 
-PJXNestedLeaf.__pjx_descriptor__ = descriptor_for(PJXNestedLeaf, "nested_leaf.html")
+PJXNestedLeaf.__pjx_descriptor__ = descriptor_for(
+    PJXNestedLeaf, "nesting/nested_leaf.html"
+)
 
 
 class PJXNestedMid(BaseComponent):
     label: str = ""
 
 
-PJXNestedMid.__pjx_descriptor__ = descriptor_for(PJXNestedMid, "nested_mid.html")
+PJXNestedMid.__pjx_descriptor__ = descriptor_for(
+    PJXNestedMid, "nesting/nested_mid.html"
+)
 
 
 class PJXNestedRoot(BaseComponent):
     pass
 
 
-PJXNestedRoot.__pjx_descriptor__ = descriptor_for(PJXNestedRoot, "nested_root.html")
+PJXNestedRoot.__pjx_descriptor__ = descriptor_for(
+    PJXNestedRoot, "nesting/nested_root.html"
+)
 
 
 @pytest.fixture(autouse=True)

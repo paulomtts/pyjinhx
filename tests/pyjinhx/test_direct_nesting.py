@@ -26,11 +26,11 @@ from pyjinhx.rendering.segments import RenderedLevel
 from pyjinhx.rendering.session import RenderSession
 from pyjinhx.rendering.template_context import ComponentNode, build_context
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
-    """A ClassDescriptor pointing at a fixture template under tests/templates."""
+    """A ClassDescriptor pointing at a fixture template under tests/fixtures/templates."""
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
@@ -50,7 +50,7 @@ class Leaf(BaseComponent):
     text: str = "x"
 
 
-Leaf.__pjx_descriptor__ = descriptor("nest_leaf.html", frozenset())
+Leaf.__pjx_descriptor__ = descriptor("nesting/nest_leaf.html", frozenset())
 
 
 class TestBareSlotField:
@@ -59,7 +59,7 @@ class TestBareSlotField:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         output = render(Card(content=Leaf(text="hi")), session())
@@ -81,13 +81,15 @@ class TestBareSlotField:
                 load_calls.append("called")
                 return cls(text="from-load")
 
-        ReactiveLeaf.__pjx_descriptor__ = descriptor("nest_leaf.html", frozenset())
+        ReactiveLeaf.__pjx_descriptor__ = descriptor(
+            "nesting/nest_leaf.html", frozenset()
+        )
 
         class Card(BaseComponent):
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         output = render(Card(content=ReactiveLeaf(text="hand-set")), session())
@@ -100,7 +102,7 @@ class TestBareSlotField:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         level = render_level(Card(content=Leaf(text="hi")), session())
@@ -116,7 +118,7 @@ class TestSlotFieldOrigin:
             inner: Children = ""
 
         Wrap.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), "inner"
+            "nesting/nest_wrap.html", frozenset({"inner"}), "inner"
         )
 
         output = render(Wrap(inner=Leaf(text="a")), session())
@@ -128,7 +130,7 @@ class TestSlotFieldOrigin:
             inner: Annotated[str | BaseComponent, PjxSlot()] = ""
 
         Wrap.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), None
+            "nesting/nest_wrap.html", frozenset({"inner"}), None
         )
 
         output = render(Wrap(inner=Leaf(text="b")), session())
@@ -142,7 +144,7 @@ class TestTruthiness:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_if.html", frozenset({"content"}), "content"
+            "nesting/nest_if.html", frozenset({"content"}), "content"
         )
 
         output = render(Card(content=Leaf(text="c")), session())
@@ -156,7 +158,7 @@ class TestTruthiness:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_if.html", frozenset({"content"}), "content"
+            "nesting/nest_if.html", frozenset({"content"}), "content"
         )
 
         assert render(Card(), session()) == '<div class="card"><i>empty</i></div>'
@@ -168,14 +170,14 @@ class TestNestedOfNested:
             inner: Slot = ""
 
         Middle.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), "inner"
+            "nesting/nest_wrap.html", frozenset({"inner"}), "inner"
         )
 
         class Outer(BaseComponent):
             content: Slot = ""
 
         Outer.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         output = render(Outer(content=Middle(inner=Leaf(text="deep"))), session())
@@ -190,14 +192,14 @@ class TestNestedOfNested:
             inner: Slot = ""
 
         Middle.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), "inner"
+            "nesting/nest_wrap.html", frozenset({"inner"}), "inner"
         )
 
         class Outer(BaseComponent):
             content: Slot = ""
 
         Outer.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         import pyjinhx.rendering.pipeline as render_module
@@ -226,7 +228,7 @@ class TestCycle:
             content: Slot = ""
 
         Recur.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         assert render(Recur(content=Recur(content=Leaf(text="z"))), session()) == (
@@ -242,7 +244,7 @@ class TestBoundaries:
             sidecar: Any = None
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         component = Card(content="plain", sidecar=Leaf(text="q"))
@@ -261,7 +263,7 @@ class TestBoundaries:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"}), "content"
+            "nesting/nest_content.html", frozenset({"content"}), "content"
         )
 
         context = build_context(Card(content="<b>raw</b>"), Card.__pjx_descriptor__)
@@ -274,7 +276,7 @@ class TestBoundaries:
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_attr.html", frozenset({"content"}), "content"
+            "nesting/nest_attr.html", frozenset({"content"}), "content"
         )
 
         with pytest.raises(ValueError, match="inside a tag"):

@@ -13,7 +13,7 @@ from pyjinhx.rendering.session import (
     request_scope,
 )
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 CSS = Path("/app/components/box.css")
 JS = Path("/app/components/box.js")
@@ -27,7 +27,7 @@ def _plain_descriptor(owner: type) -> ClassDescriptor:
     test_render_level.py uses.
     """
     return ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "plain_div.html",
+        template_path=_TEMPLATE_DIR / "basic/plain_div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),

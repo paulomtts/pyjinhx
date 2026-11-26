@@ -12,11 +12,11 @@ from pydantic import BaseModel
 
 from pyjinhx.components.base import BaseComponent, Children, ClassDescriptor, Slot
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def descriptor(template: str, slots: frozenset[str], children: str | None = None):
-    """A ClassDescriptor pointing at a fixture template under tests/templates."""
+    """A ClassDescriptor pointing at a fixture template under tests/fixtures/templates."""
     return ClassDescriptor(
         template_path=_TEMPLATE_DIR / template,
         slot_fields=slots,
@@ -33,7 +33,7 @@ class Leaf(BaseComponent):
     count: int = 0
 
 
-Leaf.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset())
+Leaf.__pjx_descriptor__ = descriptor("slots/slot_leaf.html", frozenset())
 
 
 class TestPjxProps:
@@ -274,7 +274,7 @@ class TestPropsThroughJinja:
     def test_a_props_field_renders_its_validated_value(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         output = render(Card(content=Leaf(title="hello")), self.session())
 
@@ -285,7 +285,7 @@ class TestPropsThroughJinja:
         # bare `{{ field }}` path is exempt from escaping.
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         output = render(Card(content=Leaf(title="<b>x</b>")), self.session())
 
@@ -294,7 +294,7 @@ class TestPropsThroughJinja:
     def test_reading_props_does_not_render_the_child(self):
         import pyjinhx.rendering.pipeline as render_module
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
         seen: list[str] = []
         original = render_module.render_level
 
@@ -315,7 +315,7 @@ class TestPropsThroughJinja:
     def test_reading_props_produces_no_slot_token(self):
         from pyjinhx.rendering.pipeline import render_level
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         level = render_level(Card(content=Leaf(title="hello")), self.session())
         text = "".join(s for s in level.segments if isinstance(s, str))
@@ -326,7 +326,7 @@ class TestPropsThroughJinja:
         from pyjinhx.rendering.pipeline import render_level
         from pyjinhx.rendering.segments import RenderedLevel
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
 
         level = render_level(Card(content=Leaf(title="hello")), self.session())
 
@@ -335,7 +335,7 @@ class TestPropsThroughJinja:
     def test_interpolating_the_view_itself_raises_the_opacity_error(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_props_bare_view.html")
+        Card = self.card_class("slots/slot_props_bare_view.html")
 
         with pytest.raises(
             TypeError, match=r"slot 'content' holds a rendered component"
@@ -359,7 +359,7 @@ class TestPropsRegressions:
     def test_bare_interpolation_still_splices_the_child(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_interp.html")
+        Card = self.card_class("slots/slot_interp.html")
 
         output = render(Card(content=Leaf(title="a")), self.session())
 
@@ -370,21 +370,21 @@ class TestPropsRegressions:
     def test_truthiness_still_takes_the_present_branch(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_if.html")
+        Card = self.card_class("slots/slot_if.html")
 
         assert render(Card(content=Leaf(title="a")), self.session()) == "<div>HAS</div>"
 
     def test_truthiness_still_takes_the_absent_branch(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_if.html")
+        Card = self.card_class("slots/slot_if.html")
 
         assert render(Card(content=""), self.session()) == "<div>NONE</div>"
 
     def test_props_works_on_a_list_wrapped_entry(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_props_list.html")
+        Card = self.card_class("slots/slot_props_list.html")
 
         output = render(
             Card(content=[Leaf(title="a"), Leaf(title="b")]), self.session()
@@ -395,7 +395,7 @@ class TestPropsRegressions:
     def test_props_works_on_a_dict_wrapped_entry(self):
         from pyjinhx.rendering.pipeline import render
 
-        Card = self.card_class("slot_props_dict.html")
+        Card = self.card_class("slots/slot_props_dict.html")
 
         output = render(Card(content={"one": Leaf(title="a")}), self.session())
 
@@ -406,7 +406,7 @@ class TestPropsRegressions:
         # the wrapping layer needed no change; this pins that.
         from pyjinhx.rendering.template_context import ComponentNode, build_context
 
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
         leaf = Leaf(title="hello")
 
         context = build_context(Card(content=leaf), Card.__pjx_descriptor__)
@@ -422,9 +422,9 @@ class TestPropsRegressions:
             inner: Children = ""
 
         Wrap.__pjx_descriptor__ = descriptor(
-            "nest_wrap.html", frozenset({"inner"}), "inner"
+            "nesting/nest_wrap.html", frozenset({"inner"}), "inner"
         )
-        Card = self.card_class("slot_props.html")
+        Card = self.card_class("slots/slot_props.html")
         leaf = Leaf(title="deep")
 
         context = build_context(Card(content=Wrap(inner=leaf)), Card.__pjx_descriptor__)
@@ -475,13 +475,15 @@ class TestStringSlotThroughProps:
         class Inner(BaseComponent):
             body: Slot = ""
 
-        Inner.__pjx_descriptor__ = descriptor("slot_leaf.html", frozenset({"body"}))
+        Inner.__pjx_descriptor__ = descriptor(
+            "slots/slot_leaf.html", frozenset({"body"})
+        )
 
         class Card(BaseComponent):
             content: Slot = ""
 
         Card.__pjx_descriptor__ = descriptor(
-            "nest_content.html", frozenset({"content"})
+            "nesting/nest_content.html", frozenset({"content"})
         )
 
         card = Card(content=Inner(body="<b>hi</b>"))

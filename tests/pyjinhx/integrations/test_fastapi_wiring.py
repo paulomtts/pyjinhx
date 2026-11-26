@@ -28,8 +28,9 @@ class Greeting(BaseComponent):
 
 Greeting.__pjx_descriptor__ = ClassDescriptor(
     template_path=Path(__file__).parent.parent.parent
+    / "fixtures"
     / "templates"
-    / "pjx_integrations_greeting.html",
+    / "fastapi/pjx_integrations_greeting.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),

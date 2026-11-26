@@ -13,7 +13,7 @@ from pyjinhx.rendering.pipeline import render_level
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 class _PJXButton(BaseComponent):
@@ -44,11 +44,11 @@ def _descriptor_for(
     )
 
 
-_PJXButton.__pjx_descriptor__ = _descriptor_for(_PJXButton, "child_button.html")
+_PJXButton.__pjx_descriptor__ = _descriptor_for(_PJXButton, "basic/child_button.html")
 _PJXCard.__pjx_descriptor__ = _descriptor_for(
-    _PJXCard, "child_card.html", children_field="body"
+    _PJXCard, "basic/child_card.html", children_field="body"
 )
-_PJXIcon.__pjx_descriptor__ = _descriptor_for(_PJXIcon, "child_icon.html")
+_PJXIcon.__pjx_descriptor__ = _descriptor_for(_PJXIcon, "basic/child_icon.html")
 
 
 @pytest.fixture(autouse=True)
@@ -77,7 +77,7 @@ def test_single_div_renders():
         title: str = "Hello"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "div.html",
+        template_path=_TEMPLATE_DIR / "basic/div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -111,7 +111,7 @@ def test_child_tag_becomes_childref():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "container.html",
+        template_path=_TEMPLATE_DIR / "basic/container.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -141,7 +141,7 @@ def test_nested_pascalcase_preserved():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "nested.html",
+        template_path=_TEMPLATE_DIR / "basic/nested.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -175,7 +175,7 @@ def test_multiple_siblings_raises():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "bad.html",
+        template_path=_TEMPLATE_DIR / "basic/bad.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -200,7 +200,7 @@ def test_no_root_element_raises():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "empty.html",
+        template_path=_TEMPLATE_DIR / "basic/empty.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -227,7 +227,7 @@ def test_descriptor_frozen_and_read():
 
     # Manually attach descriptor to class (simulating what the framework does)
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "test.html",
+        template_path=_TEMPLATE_DIR / "basic/test.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -260,7 +260,7 @@ def test_self_closing_tag():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "icon.html",
+        template_path=_TEMPLATE_DIR / "basic/icon.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -293,7 +293,7 @@ def test_paired_tag():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "card.html",
+        template_path=_TEMPLATE_DIR / "basic/card.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -329,7 +329,7 @@ def test_autoescape_active():
         unsafe_text: str = "<script>alert('xss')</script>"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "unsafe.html",
+        template_path=_TEMPLATE_DIR / "basic/unsafe.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -357,7 +357,7 @@ def test_lowercase_passes_through():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "lowercase.html",
+        template_path=_TEMPLATE_DIR / "basic/lowercase.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -389,7 +389,7 @@ def test_mixedcase_passes_through():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "mixedcase.html",
+        template_path=_TEMPLATE_DIR / "basic/mixedcase.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -422,7 +422,7 @@ def test_slot_fields_wrapped():
         content: Slot = ""
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "slotted.html",
+        template_path=_TEMPLATE_DIR / "slots/slotted.html",
         slot_fields=frozenset({"content"}),
         children_field=None,
         css_paths=(),
@@ -450,7 +450,7 @@ def test_roundtrip_serialize():
         title: str = "Test"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "roundtrip.html",
+        template_path=_TEMPLATE_DIR / "basic/roundtrip.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -500,7 +500,7 @@ def test_minimal_descriptor():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "minimal.html",
+        template_path=_TEMPLATE_DIR / "basic/minimal.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -540,7 +540,7 @@ def test_performance_100plus_fields():
     # Actually, this won't work. Let me use a simpler approach:
     # Just render a component with a simpler template that doesn't require many fields
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "minimal.html",
+        template_path=_TEMPLATE_DIR / "basic/minimal.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -637,7 +637,7 @@ def test_zero_root_names_component_and_path():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "empty.html",
+        template_path=_TEMPLATE_DIR / "basic/empty.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -667,7 +667,7 @@ def test_multi_root_names_component_and_path():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "bad.html",
+        template_path=_TEMPLATE_DIR / "basic/bad.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -697,7 +697,7 @@ def test_valid_component_unaffected_by_error_wrapping():
         title: str = "Fine"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "div.html",
+        template_path=_TEMPLATE_DIR / "basic/div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -726,7 +726,7 @@ def test_template_assertion_error_not_wrapped():
         pass
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "broken_assertion.html",
+        template_path=_TEMPLATE_DIR / "basic/broken_assertion.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -761,7 +761,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
         content: Slot = ""
 
     SpliceLeaf.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "slot_leaf.html",
+        template_path=_TEMPLATE_DIR / "slots/slot_leaf.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -770,7 +770,7 @@ def test_interpolated_component_slot_becomes_a_nested_level():
         provenance={"template": SpliceLeaf},
     )
     SpliceBox.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "slot_interp.html",
+        template_path=_TEMPLATE_DIR / "slots/slot_interp.html",
         slot_fields=frozenset({"content"}),
         children_field=None,
         css_paths=(),

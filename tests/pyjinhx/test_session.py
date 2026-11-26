@@ -20,7 +20,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering import session as session_module
 from pyjinhx.rendering.pipeline import render
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def test_getters_return_empty_defaults_outside_any_scope():
@@ -209,11 +209,11 @@ def test_scope_builds_a_session_with_the_absolute_path_loader():
 
 def test_passing_template_dir_is_now_a_type_error():
     with pytest.raises(TypeError):
-        session_module.RenderSession(template_dir="tests/templates")  # type: ignore[call-arg]
+        session_module.RenderSession(template_dir="tests/fixtures/templates")  # type: ignore[call-arg]
 
     with (
         pytest.raises(TypeError),
-        session_module.request_scope(template_dir="tests/templates"),  # type: ignore[call-arg]
+        session_module.request_scope(template_dir="tests/fixtures/templates"),  # type: ignore[call-arg]
     ):
         pass
 
@@ -228,7 +228,7 @@ class PlainBox(BaseComponent):
 # specific template, so it bypasses that walk entirely, the same way
 # test_render_level.py does: build a ClassDescriptor by hand and assign it.
 PlainBox.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "plain_div.html",
+    template_path=_TEMPLATE_DIR / "basic/plain_div.html",
     slot_fields=frozenset(),
     children_field=None,
     css_paths=(),
@@ -868,7 +868,7 @@ def test_freshness_cache_does_not_leak_across_request_scopes(tmp_path):
 def test_uptodate_records_and_then_short_circuits_within_one_request():
     """The freshness closure confirms a path once per request, then answers from
     the cache: this is the memoization walk_manifest's repeat lookups ride on."""
-    template_path = _TEMPLATE_DIR / "plain_div.html"
+    template_path = _TEMPLATE_DIR / "basic/plain_div.html"
     loader = session_module.AbsolutePathLoader()
     env = session_module.Environment(loader=loader)
 

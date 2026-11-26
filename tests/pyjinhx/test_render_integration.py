@@ -23,7 +23,7 @@ from pyjinhx.rendering.root_attrs import stamp_root_attrs
 from pyjinhx.rendering.segments import serialize
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 def test_childless_end_to_end_pipeline():
@@ -34,7 +34,7 @@ def test_childless_end_to_end_pipeline():
         title: str = "Hello"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "integration_childless.html",
+        template_path=_TEMPLATE_DIR / "integration/integration_childless.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -64,7 +64,7 @@ def test_autoescape_scalar_survives_pipeline():
         body: str = """<script>alert("xss")</script> & co"""
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "integration_escape.html",
+        template_path=_TEMPLATE_DIR / "integration/integration_escape.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -100,7 +100,7 @@ def test_slot_field_raw_vs_scalar_escaped():
         markup: Slot = "<b>hi</b>"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "integration_slot.html",
+        template_path=_TEMPLATE_DIR / "integration/integration_slot.html",
         slot_fields=frozenset({"markup"}),
         children_field=None,
         css_paths=(),
@@ -130,7 +130,7 @@ def test_stamped_attrs_land_in_root_tag():
         title: str = "Body"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "integration_attrs.html",
+        template_path=_TEMPLATE_DIR / "integration/integration_attrs.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),
@@ -169,7 +169,7 @@ def test_full_pipeline_regression():
         body: Slot = "<b>bold body</b>"
 
     descriptor = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "integration_full.html",
+        template_path=_TEMPLATE_DIR / "integration/integration_full.html",
         slot_fields=frozenset({"body"}),
         children_field=None,
         css_paths=(),

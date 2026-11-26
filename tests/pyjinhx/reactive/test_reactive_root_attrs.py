@@ -32,7 +32,7 @@ from pyjinhx.rendering.segments import (
 )
 from pyjinhx.rendering.session import RenderSession
 
-_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
 
 
 class ReactiveWidget(ReactiveComponent):
@@ -56,9 +56,11 @@ def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
 
 
 ReactiveWidget.__pjx_descriptor__ = _descriptor_for(
-    ReactiveWidget, "reactive_widget.html"
+    ReactiveWidget, "reactive/reactive_widget.html"
 )
-PlainWidget.__pjx_descriptor__ = _descriptor_for(PlainWidget, "plain_widget.html")
+PlainWidget.__pjx_descriptor__ = _descriptor_for(
+    PlainWidget, "reactive/plain_widget.html"
+)
 
 
 class VoidWidget(ReactiveComponent):
@@ -81,16 +83,20 @@ class ReactiveShell(ReactiveComponent):
     body: Slot = ""
 
 
-VoidWidget.__pjx_descriptor__ = _descriptor_for(VoidWidget, "reactive_void.html")
-PreStampedWidget.__pjx_descriptor__ = _descriptor_for(
-    PreStampedWidget, "reactive_prestamped.html"
+VoidWidget.__pjx_descriptor__ = _descriptor_for(
+    VoidWidget, "reactive/reactive_void.html"
 )
-AttrsWidget.__pjx_descriptor__ = _descriptor_for(AttrsWidget, "reactive_attrs.html")
+PreStampedWidget.__pjx_descriptor__ = _descriptor_for(
+    PreStampedWidget, "reactive/reactive_prestamped.html"
+)
+AttrsWidget.__pjx_descriptor__ = _descriptor_for(
+    AttrsWidget, "reactive/reactive_attrs.html"
+)
 QuotingWidget.__pjx_descriptor__ = _descriptor_for(
-    QuotingWidget, "reactive_widget.html"
+    QuotingWidget, "reactive/reactive_widget.html"
 )
 ReactiveShell.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
     slot_fields=frozenset({"body"}),
     children_field=None,
     css_paths=(),
@@ -117,13 +123,13 @@ class PlainShell(BaseComponent):
 
 
 KeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
-    KeyedReactiveWidget, "reactive_widget.html"
+    KeyedReactiveWidget, "reactive/reactive_widget.html"
 )
 UnkeyedReactiveWidget.__pjx_descriptor__ = _descriptor_for(
-    UnkeyedReactiveWidget, "reactive_widget.html"
+    UnkeyedReactiveWidget, "reactive/reactive_widget.html"
 )
 KeyedReactiveShell.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
     slot_fields=frozenset({"body"}),
     children_field=None,
     css_paths=(),
@@ -132,7 +138,7 @@ KeyedReactiveShell.__pjx_descriptor__ = ClassDescriptor(
     provenance={"template": KeyedReactiveShell},
 )
 PlainShell.__pjx_descriptor__ = ClassDescriptor(
-    template_path=_TEMPLATE_DIR / "reactive_shell.html",
+    template_path=_TEMPLATE_DIR / "reactive/reactive_shell.html",
     slot_fields=frozenset({"body"}),
     children_field=None,
     css_paths=(),
@@ -158,13 +164,13 @@ class DoubleBuiltinRootWidget(ReactiveComponent):
     pass
 
 
-InnerBadge.__pjx_descriptor__ = _descriptor_for(InnerBadge, "inner_badge.html")
-MiddleWrap.__pjx_descriptor__ = _descriptor_for(MiddleWrap, "middle_wrap.html")
+InnerBadge.__pjx_descriptor__ = _descriptor_for(InnerBadge, "reactive/inner_badge.html")
+MiddleWrap.__pjx_descriptor__ = _descriptor_for(MiddleWrap, "reactive/middle_wrap.html")
 BuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
-    BuiltinRootWidget, "reactive_builtin_root.html"
+    BuiltinRootWidget, "reactive/reactive_builtin_root.html"
 )
 DoubleBuiltinRootWidget.__pjx_descriptor__ = _descriptor_for(
-    DoubleBuiltinRootWidget, "reactive_double_root.html"
+    DoubleBuiltinRootWidget, "reactive/reactive_double_root.html"
 )
 
 
@@ -173,7 +179,7 @@ class PrologueRootWidget(ReactiveComponent):
 
 
 PrologueRootWidget.__pjx_descriptor__ = _descriptor_for(
-    PrologueRootWidget, "reactive_prologue_root.html"
+    PrologueRootWidget, "reactive/reactive_prologue_root.html"
 )
 
 
@@ -186,10 +192,10 @@ class OuterReactiveRoot(ReactiveComponent):
 
 
 InnerReactiveRoot.__pjx_descriptor__ = _descriptor_for(
-    InnerReactiveRoot, "reactive_inner_root.html"
+    InnerReactiveRoot, "reactive/reactive_inner_root.html"
 )
 OuterReactiveRoot.__pjx_descriptor__ = _descriptor_for(
-    OuterReactiveRoot, "reactive_nested_reactive_root.html"
+    OuterReactiveRoot, "reactive/reactive_nested_reactive_root.html"
 )
 
 

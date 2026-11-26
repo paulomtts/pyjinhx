@@ -41,7 +41,7 @@ from pyjinhx.rendering.session import (
 # stay generous on a loaded CI box.
 WORKERS = 8
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 # Barrier waits carry a timeout so a genuine deadlock fails the suite instead of
 # hanging it; the value is a liveness backstop, not a performance assertion.
@@ -107,7 +107,7 @@ def concurrency_assets(tmp_path_factory: pytest.TempPathFactory) -> Path:
     beta_js.write_text("console.log('beta');")
 
     _ConcAlpha.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "div.html",
+        template_path=_TEMPLATE_DIR / "basic/div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(alpha_css,),
@@ -116,7 +116,7 @@ def concurrency_assets(tmp_path_factory: pytest.TempPathFactory) -> Path:
         provenance={"template": _ConcAlpha},
     )
     _ConcBeta.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "div.html",
+        template_path=_TEMPLATE_DIR / "basic/div.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(beta_css,),

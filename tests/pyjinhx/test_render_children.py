@@ -9,7 +9,7 @@ from pyjinhx.components.base import BaseComponent, ClassDescriptor
 from pyjinhx.rendering.pipeline import _fill_children, _passthrough_markup
 from pyjinhx.rendering.segments import ChildRef, RenderedLevel
 
-_TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent / "fixtures" / "templates"
 
 
 class PJXButton(BaseComponent):
@@ -117,7 +117,7 @@ def test_render_level_passes_unknown_tags_through():
         pass
 
     UnknownHost.__pjx_descriptor__ = ClassDescriptor(
-        template_path=_TEMPLATE_DIR / "unknown_host.html",
+        template_path=_TEMPLATE_DIR / "basic/unknown_host.html",
         slot_fields=frozenset(),
         children_field=None,
         css_paths=(),

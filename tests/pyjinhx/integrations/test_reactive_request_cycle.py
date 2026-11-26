@@ -105,7 +105,7 @@ class CycleShell(ReactiveComponent, react=(Keys.CYCLE,)):
         return cls(pjx_key=pjx_key)
 
 
-ASSET_DIR = Path(__file__).parent.parent.parent / "templates"
+ASSET_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
 
 
 class Counter:
@@ -121,26 +121,29 @@ def _publish_registry():
     """Publish the tag -> class map and reset the per-test app state."""
     STORE.clear()
     LOAD_CALLS.clear()
-    template_dir = Path(__file__).parent.parent.parent / "templates"
+    template_dir = Path(__file__).parent.parent.parent / "fixtures" / "templates"
     discovery.build_registry(
         template_dir, [CycleCard, CycleBadge, CycleNested, CycleShell]
     )
     # The middleware's request session roots its loader at "/", so the
     # descriptor must carry the real absolute path rather than a bare name.
     CycleCard.__pjx_descriptor__ = dataclasses.replace(
-        CycleCard.__pjx_descriptor__, template_path=template_dir / "cycle_card.pjx"
+        CycleCard.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_card.pjx",
     )
     CycleBadge.__pjx_descriptor__ = dataclasses.replace(
         CycleBadge.__pjx_descriptor__,
-        template_path=template_dir / "cycle_badge.pjx",
-        css_paths=(ASSET_DIR / "cycle_badge.css",),
-        js_paths=(ASSET_DIR / "cycle_badge.js",),
+        template_path=template_dir / "fastapi/cycle_badge.pjx",
+        css_paths=(ASSET_DIR / "fastapi/cycle_badge.css",),
+        js_paths=(ASSET_DIR / "fastapi/cycle_badge.js",),
     )
     CycleNested.__pjx_descriptor__ = dataclasses.replace(
-        CycleNested.__pjx_descriptor__, template_path=template_dir / "cycle_nested.pjx"
+        CycleNested.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_nested.pjx",
     )
     CycleShell.__pjx_descriptor__ = dataclasses.replace(
-        CycleShell.__pjx_descriptor__, template_path=template_dir / "cycle_shell.pjx"
+        CycleShell.__pjx_descriptor__,
+        template_path=template_dir / "fastapi/cycle_shell.pjx",
     )
     yield
 
@@ -349,8 +352,8 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
     # 4c: a region load() can no longer build is deleted rather than re-rendered.
     assert "hx-swap-oob=\"delete:[data-pjx-id='gone']\"" in body
     # 5: the asset-bearing region's CSS and JS ride along, head-targeted.
-    css_token = asset_token(ASSET_DIR / "cycle_badge.css")
-    js_token = asset_token(ASSET_DIR / "cycle_badge.js")
+    css_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.js")
     assert f'<style data-pjx-asset="{css_token}" hx-swap-oob="beforeend:head">' in body
     assert f'<script data-pjx-asset="{js_token}" hx-swap-oob="beforeend:head">' in body
     # 6: nothing for htmx's default swap to place.
@@ -360,8 +363,8 @@ def test_mutation_round_trip_demo_swaps_dirty_regions_and_ships_missing_assets()
 def test_round_trip_does_not_resend_assets_the_client_already_reports():
     app = make_app()
     STORE["card-1"] = 0
-    css_token = asset_token(ASSET_DIR / "cycle_badge.css")
-    js_token = asset_token(ASSET_DIR / "cycle_badge.js")
+    css_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.css")
+    js_token = asset_token(ASSET_DIR / "fastapi/cycle_badge.js")
 
     @app.post("/bump")
     def bump(request: Request):
@@ -405,7 +408,7 @@ def test_a_malformed_assets_header_means_the_client_has_nothing():
 
     # An unreadable browser-supplied header re-delivers rather than raising.
     assert (
-        f'data-pjx-asset="{asset_token(ASSET_DIR / "cycle_badge.css")}"'
+        f'data-pjx-asset="{asset_token(ASSET_DIR / "fastapi/cycle_badge.css")}"'
         in response.text
     )
 

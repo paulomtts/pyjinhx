@@ -25,7 +25,7 @@ from pyjinhx.rendering.pipeline import render, render_level
 from pyjinhx.rendering.segments import serialize
 from pyjinhx.rendering.session import RenderSession, request_scope
 
-_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates"
+_TEMPLATE_DIR = Path(__file__).parent.parent.parent / "fixtures" / "templates"
 
 _load_calls: list[int] = []
 
@@ -55,9 +55,11 @@ def _descriptor_for(cls: type[BaseComponent], template: str) -> ClassDescriptor:
 
 
 PJXReactiveWidget.__pjx_descriptor__ = _descriptor_for(
-    PJXReactiveWidget, "reactive_widget.html"
+    PJXReactiveWidget, "reactive/reactive_widget.html"
 )
-PJXPlainWidget.__pjx_descriptor__ = _descriptor_for(PJXPlainWidget, "plain_widget.html")
+PJXPlainWidget.__pjx_descriptor__ = _descriptor_for(
+    PJXPlainWidget, "reactive/plain_widget.html"
+)
 
 
 class ContainerComp(BaseComponent):
@@ -65,7 +67,7 @@ class ContainerComp(BaseComponent):
 
 
 ContainerComp.__pjx_descriptor__ = _descriptor_for(
-    ContainerComp, "reactive_mount_container.html"
+    ContainerComp, "reactive/reactive_mount_container.html"
 )
 
 
@@ -80,7 +82,7 @@ class PJXKeyedWidget(ReactiveComponent):
 
 
 PJXKeyedWidget.__pjx_descriptor__ = _descriptor_for(
-    PJXKeyedWidget, "reactive_keyed_widget.html"
+    PJXKeyedWidget, "reactive/reactive_keyed_widget.html"
 )
 
 
@@ -89,7 +91,7 @@ class KeyedTwiceContainer(BaseComponent):
 
 
 KeyedTwiceContainer.__pjx_descriptor__ = _descriptor_for(
-    KeyedTwiceContainer, "reactive_keyed_twice.html"
+    KeyedTwiceContainer, "reactive/reactive_keyed_twice.html"
 )
 
 
@@ -98,7 +100,7 @@ class KeyedOverrideContainer(BaseComponent):
 
 
 KeyedOverrideContainer.__pjx_descriptor__ = _descriptor_for(
-    KeyedOverrideContainer, "reactive_keyed_override.html"
+    KeyedOverrideContainer, "reactive/reactive_keyed_override.html"
 )
 
 
@@ -113,7 +115,7 @@ class PJXKeyedListWidget(ReactiveComponent):
 
 
 PJXKeyedListWidget.__pjx_descriptor__ = _descriptor_for(
-    PJXKeyedListWidget, "reactive_keyed_list_widget.html"
+    PJXKeyedListWidget, "reactive/reactive_keyed_list_widget.html"
 )
 
 
@@ -122,7 +124,7 @@ class KeyedJsonAttrContainer(BaseComponent):
 
 
 KeyedJsonAttrContainer.__pjx_descriptor__ = _descriptor_for(
-    KeyedJsonAttrContainer, "reactive_keyed_json_attr.html"
+    KeyedJsonAttrContainer, "reactive/reactive_keyed_json_attr.html"
 )
 
 
@@ -168,7 +170,7 @@ def test_plain_child_mounted_via_childref_is_unaffected():
         pass
 
     OnlyPlainContainer.__pjx_descriptor__ = _descriptor_for(
-        OnlyPlainContainer, "container_only_plain.html"
+        OnlyPlainContainer, "reactive/container_only_plain.html"
     )
     discovery._registry.mapping["only_plain_container"] = OnlyPlainContainer
 
