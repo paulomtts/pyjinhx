@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Migration guide `load()` examples narrow the optional `ctx` before using it, so they type-check.
+
 ## 1.18.0 — Role-based package layout (2026-11-26)
 
 ### Changed

@@ -262,6 +262,7 @@ render** instead of deleted — no error, no warning, just an empty row left on 
 # BEFORE — swallows the signal; the client keeps a blank row forever
 @classmethod
 def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
+    assert ctx is not None
     try:
         todo = ctx.store.get(todo_id)
     except KeyError:
@@ -272,6 +273,7 @@ def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
 # AFTER — let it raise; the region is deleted client-side
 @classmethod
 def load(cls, todo_id: int, ctx: TodoAppContext | None = None) -> "ItemRow":
+    assert ctx is not None
     todo = ctx.store.get(todo_id)  # KeyError is the signal
     return cls(todo_id=todo_id, title=todo.text, done=todo.done)
 ```
