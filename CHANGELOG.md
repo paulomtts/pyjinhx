@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.18.0 — Role-based package layout (2026-11-26)
 
 ### Changed
 - Internal modules moved into role-based packages: `pyjinhx.document` (`scanner`,

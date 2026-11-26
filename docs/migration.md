@@ -7,7 +7,7 @@
     those two versions, never as a description of how pyjinhx behaves today. The topmost
     section is the only one that describes current behaviour.
 
-## 1.17.x → next (module layout)
+## 1.17.x → 1.18.0 (module layout)
 
 The public API is unchanged: everything in `pyjinhx.__all__` and in
 `pyjinhx.builtins` imports exactly as before, and `python -m pyjinhx.manifest`
@@ -43,7 +43,7 @@ packages by role, with no shims, so a deep import of the old path now raises
 works; import the module from its package, for example
 `from pyjinhx.rendering import registry`.
 
-## 1.17.x → next (flat builtins)
+## 1.17.x → 1.18.0 (flat builtins)
 
 Deep imports from `pyjinhx.builtins.ui.<name>` no longer exist. Replace
 `from pyjinhx.builtins.ui.pjx_button import PJXButton` with
