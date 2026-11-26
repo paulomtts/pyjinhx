@@ -3,7 +3,7 @@
 All components reject undeclared kwargs at construction time. This keeps the core
 lightweight and lets the renderer avoid walking arbitrary instance attributes.
 
-Imports pydantic and ClassDescriptor from descriptor.py at module scope. The
+Imports pydantic at module scope. The
 render() convenience method also reaches upward into rendering.py and session.py,
 but only from inside the method body — a module-level edge to rendering.py would
 be a circular import, since rendering.py imports BaseComponent at import time. The
@@ -17,6 +17,7 @@ import re
 import sys
 import types
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Union, get_args, get_origin
 
@@ -31,7 +32,6 @@ from pydantic import (
 )
 from pydantic.fields import FieldInfo
 
-from pyjinhx.descriptor import ClassDescriptor
 from pyjinhx.importer import first_line, loaded_document
 from pyjinhx.sfc import (
     BlockSyntaxError,
@@ -49,6 +49,35 @@ if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
 
 logger = logging.getLogger("pyjinhx")
+
+
+@dataclass(frozen=True, slots=True)
+class ClassDescriptor:
+    """Per-class resolution results, immutable after creation.
+
+    Holds the single template probe result, asset paths (resolved per-kind up
+    the MRO), slot fields, the children target, strict mode flag, and
+    provenance mapping (kind → ancestor class).
+    """
+
+    template_path: Path
+    slot_fields: frozenset[str]
+    children_field: str | None
+    css_paths: tuple[Path, ...]
+    js_paths: tuple[Path, ...]
+    strict: bool
+    provenance: Mapping[str, type]
+    has_stale_def_header: bool = False
+    """Whether the resolved template still carries a ``{#def#}`` header this
+    class-based component ignores. Answered once, when ``template_path`` is
+    resolved, so no render pays for the probe."""
+    json_coercible_fields: frozenset[str] = frozenset()
+    """Declared fields whose annotation makes them JSON-coercion candidates —
+    see :func:`pyjinhx._component._is_json_coercible_annotation`. Resolved
+    once per class at registration, mirroring ``slot_fields``."""
+    inline_class: str | None = None
+    """The class whose ``template`` string is the template, or ``None`` for a
+    ``.pjx`` file. When set, ``template_path`` is that class's ``.py`` module."""
 
 _auto_id_counter = itertools.count(1)
 

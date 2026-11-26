@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
 
 
-_BUILTIN_ASSET_DIR = Path(__file__).resolve().parent / "builtins"
+_BUILTIN_ASSET_DIR = Path(__file__).resolve().parent.parent / "builtins"
 
 
 def _is_builtin_asset(path: Path) -> bool:
