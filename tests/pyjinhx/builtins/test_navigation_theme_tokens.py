@@ -9,7 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-UI = Path(__file__).parents[3] / "pyjinhx" / "builtins" / "ui"
+UI = Path(__file__).parents[3] / "pyjinhx" / "builtins"
 BUILTINS = UI.parent
 
 # Copied from tests/pyjinhx/builtins/test_feedback_theme_tokens.py: the tests

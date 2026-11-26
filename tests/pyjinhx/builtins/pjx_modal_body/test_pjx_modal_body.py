@@ -1,9 +1,9 @@
-"""PJXModalBody renders a single-root modal region (port of v0.x pyjinhx/builtins/ui/pjx_modal_body)."""
+"""PJXModalBody renders a single-root modal region (port of v0.x pyjinhx/builtins/pjx_modal_body)."""
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_modal_body import PJXModalBody
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

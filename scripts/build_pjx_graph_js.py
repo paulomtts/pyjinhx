@@ -1,4 +1,4 @@
-"""One-off generator for pyjinhx/builtins/ui/pjx_graph/pjx_graph.js.
+"""One-off generator for pyjinhx/builtins/pjx_graph/pjx_graph.js.
 
 A builtin ships exactly one script, so the graph's asset is the vendored d3
 subset (src/d3.vendor.js) followed by the engine (src/engine.js), inside one
@@ -13,7 +13,7 @@ A test compares the committed file with ``build()``, so a stale asset fails CI.
 
 from pathlib import Path
 
-GRAPH_DIR = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/ui/pjx_graph"
+GRAPH_DIR = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/pjx_graph"
 D3_SOURCE = GRAPH_DIR / "src/d3.vendor.js"
 ENGINE_SOURCE = GRAPH_DIR / "src/engine.js"
 OUT = GRAPH_DIR / "pjx_graph.js"

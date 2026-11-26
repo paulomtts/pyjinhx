@@ -6,7 +6,7 @@ Ported from v0.x tests/unit/test_resizable_parts.py (handle half).
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.pjx_resizable_handle import PJXResizableHandle
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

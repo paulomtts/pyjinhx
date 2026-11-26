@@ -1,4 +1,4 @@
-"""PJXPopover renders the positioned root shell that anchors a trigger and its panel (port of v0.x pyjinhx/builtins/ui/pjx_popover/pjx_popover.py)."""
+"""PJXPopover renders the positioned root shell that anchors a trigger and its panel (port of v0.x pyjinhx/builtins/pjx_popover/pjx_popover.py)."""
 
 import dataclasses
 
@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.pjx_popover import PJXPopover
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger import (
+from pyjinhx.builtins.pjx_accordion_trigger.pjx_accordion_trigger import (
     PJXAccordionTrigger,
 )
 

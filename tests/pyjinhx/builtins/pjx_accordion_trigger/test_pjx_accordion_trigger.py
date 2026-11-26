@@ -1,4 +1,4 @@
-"""PJXAccordionTrigger renders the <summary> row with its chevron icon (port of v0.x pyjinhx/builtins/ui/pjx_accordion_trigger)."""
+"""PJXAccordionTrigger renders the <summary> row with its chevron icon (port of v0.x pyjinhx/builtins/pjx_accordion_trigger)."""
 
 import dataclasses
 
@@ -6,8 +6,8 @@ import pytest
 
 from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_accordion_trigger import PJXAccordionTrigger
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_accordion_trigger import PJXAccordionTrigger
+from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

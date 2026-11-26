@@ -22,7 +22,6 @@ ASSET = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_roster_picker"
     / "pjx_roster_picker.js"
 ).read_text(encoding="utf-8")

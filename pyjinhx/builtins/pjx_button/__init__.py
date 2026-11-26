@@ -1,3 +1,3 @@
-from pyjinhx.builtins.ui.pjx_button.pjx_button import PJXButton
+from pyjinhx.builtins.pjx_button.pjx_button import PJXButton
 
 __all__ = ["PJXButton"]

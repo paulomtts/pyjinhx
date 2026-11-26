@@ -1,9 +1,9 @@
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
-from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
-from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
-from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.builtins.ui.pjx_graph_side_panel import PJXGraphSidePanel
+from pyjinhx.builtins.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph_controls import PJXGraphControls
+from pyjinhx.builtins.pjx_graph_edges import PJXGraphEdges
+from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_graph_side_panel import PJXGraphSidePanel
 
 # (node_id, x, y, eyebrow, title, summary, panel details)
 STEPS = (

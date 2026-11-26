@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_resizable_panel.pjx_resizable_panel import (
+from pyjinhx.builtins.pjx_resizable_panel.pjx_resizable_panel import (
     PJXResizablePanel,
 )
 

@@ -515,9 +515,9 @@ class TestBuiltinCardWithListContent:
     """
 
     def test_a_card_with_a_list_of_regions_renders_composed_markup(self):
-        from pyjinhx.builtins.ui.pjx_card import PJXCard
-        from pyjinhx.builtins.ui.pjx_card_body import PJXCardBody
-        from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
+        from pyjinhx.builtins.pjx_card import PJXCard
+        from pyjinhx.builtins.pjx_card_body import PJXCardBody
+        from pyjinhx.builtins.pjx_card_header import PJXCardHeader
 
         output = render(
             PJXCard(

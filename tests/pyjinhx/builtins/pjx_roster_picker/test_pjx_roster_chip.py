@@ -8,17 +8,13 @@ from pydantic import ValidationError
 
 from pyjinhx import discovery
 from pyjinhx._component import _is_slot_field
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
+from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
 from pyjinhx.classless import component
 from pyjinhx.rendering import render
 
 PACKAGE_DIR = (
-    Path(__file__).resolve().parents[4]
-    / "pyjinhx"
-    / "builtins"
-    / "ui"
-    / "pjx_roster_chip"
+    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_chip"
 )
 OPTIONAL_FIELDS = [
     "initials",

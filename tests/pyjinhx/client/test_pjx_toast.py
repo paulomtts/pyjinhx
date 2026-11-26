@@ -7,11 +7,7 @@ from pathlib import Path
 import pyjinhx
 
 TOAST_HOST_JS_PATH = (
-    Path(pyjinhx.__file__).parent
-    / "builtins"
-    / "ui"
-    / "pjx_toast_host"
-    / "pjx_toast_host.js"
+    Path(pyjinhx.__file__).parent / "builtins" / "pjx_toast_host" / "pjx_toast_host.js"
 )
 
 LISTEN = """

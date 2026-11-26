@@ -1,14 +1,14 @@
-"""PJXModal renders the single-root <dialog> shell that composes the modal parts (port of v0.x pyjinhx/builtins/ui/pjx_modal)."""
+"""PJXModal renders the single-root <dialog> shell that composes the modal parts (port of v0.x pyjinhx/builtins/pjx_modal)."""
 
 import dataclasses
 
 import pytest
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_modal import PJXModal
-from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
-from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
-from pyjinhx.builtins.ui.pjx_modal_header import PJXModalHeader
+from pyjinhx.builtins.pjx_modal import PJXModal
+from pyjinhx.builtins.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.pjx_modal_footer import PJXModalFooter
+from pyjinhx.builtins.pjx_modal_header import PJXModalHeader
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

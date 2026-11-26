@@ -10,7 +10,7 @@ import pytest
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "ui"
+UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins"
 TOOLTIP_CSS = UI / "pjx_tooltip" / "pjx_tooltip.css"
 TOOLTIP_CONTENT_CSS = UI / "pjx_tooltip_content" / "pjx_tooltip_content.css"
 

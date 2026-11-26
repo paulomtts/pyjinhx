@@ -7,7 +7,13 @@
     those two versions, never as a description of how pyjinhx behaves today. The topmost
     section is the only one that describes current behaviour.
 
-## 1.16.x → next (fewer files)
+## 1.17.x → next (flat builtins)
+
+Deep imports from `pyjinhx.builtins.ui.<name>` no longer exist. Replace
+`from pyjinhx.builtins.ui.pjx_button import PJXButton` with
+`from pyjinhx.builtins import PJXButton`.
+
+## 1.16.x → 1.17.0 (fewer files)
 
 Nothing here is required: `.py` + `.pjx` (+ `.css` / `.js`) keeps working, and moving
 a component to another shape is per component and reversible. See

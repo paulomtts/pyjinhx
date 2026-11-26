@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge.pjx_badge import PJXBadge
-from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 REQUIRED = {"node_id": "a", "x": 10, "y": 20.5, "title": "Start"}
@@ -17,7 +17,6 @@ CSS = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph_node"
     / "pjx_graph_node.css"
 )

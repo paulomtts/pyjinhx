@@ -1,19 +1,19 @@
-from pyjinhx.builtins.ui.pjx_alert import PJXAlert
-from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
-from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
-from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
-from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
-from pyjinhx.builtins.ui.pjx_modal import PJXModal
-from pyjinhx.builtins.ui.pjx_modal_body import PJXModalBody
-from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
-from pyjinhx.builtins.ui.pjx_modal_header import PJXModalHeader
-from pyjinhx.builtins.ui.pjx_notification import PJXNotification
-from pyjinhx.builtins.ui.pjx_popover import PJXPopover
-from pyjinhx.builtins.ui.pjx_popover_panel import PJXPopoverPanel
-from pyjinhx.builtins.ui.pjx_popover_trigger import PJXPopoverTrigger
-from pyjinhx.builtins.ui.pjx_tooltip import PJXTooltip
-from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
-from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
+from pyjinhx.builtins.pjx_alert import PJXAlert
+from pyjinhx.builtins.pjx_drawer import PJXDrawer
+from pyjinhx.builtins.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx.builtins.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx.builtins.pjx_modal import PJXModal
+from pyjinhx.builtins.pjx_modal_body import PJXModalBody
+from pyjinhx.builtins.pjx_modal_footer import PJXModalFooter
+from pyjinhx.builtins.pjx_modal_header import PJXModalHeader
+from pyjinhx.builtins.pjx_notification import PJXNotification
+from pyjinhx.builtins.pjx_popover import PJXPopover
+from pyjinhx.builtins.pjx_popover_panel import PJXPopoverPanel
+from pyjinhx.builtins.pjx_popover_trigger import PJXPopoverTrigger
+from pyjinhx.builtins.pjx_tooltip import PJXTooltip
+from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx.builtins.pjx_tooltip_trigger import PJXTooltipTrigger
 
 
 def modal():

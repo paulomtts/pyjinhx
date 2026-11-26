@@ -7,7 +7,7 @@ These 17 symbols are the entire top-level public API. Everything else — `pyjin
 The one other supported import path is the builtin UI kit, which has its own short public path:
 
 ```python
-from pyjinhx.builtins import PJXCard  # never pyjinhx.builtins.ui.pjx_card.pjx_card
+from pyjinhx.builtins import PJXCard  # never pyjinhx.builtins.pjx_card.pjx_card
 ```
 
 The deeper machinery behind these symbols — the parser, finder, asset resolver, integration backend, cache/invalidation, and the Redis/SQLite backends — is documented under **API Reference → Internals**.

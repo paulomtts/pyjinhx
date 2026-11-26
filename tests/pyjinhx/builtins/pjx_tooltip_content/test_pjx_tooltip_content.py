@@ -1,11 +1,11 @@
-"""PJXTooltipContent renders the hidden tip element a tooltip trigger reveals (port of v0.x pyjinhx/builtins/ui/pjx_tooltip_content/pjx_tooltip_content.py)."""
+"""PJXTooltipContent renders the hidden tip element a tooltip trigger reveals (port of v0.x pyjinhx/builtins/pjx_tooltip_content/pjx_tooltip_content.py)."""
 
 import dataclasses
 
 import pytest
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

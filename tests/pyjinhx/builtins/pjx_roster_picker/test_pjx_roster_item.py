@@ -8,7 +8,7 @@ from markupsafe import Markup
 from pydantic import ValidationError
 
 from pyjinhx._component import PjxSlot, _is_slot_field
-from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem
+from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem
 
 OPTIONAL_FIELDS = ["subtitle", "initials", "color", "src", "icon", "extra", "detail"]
 TEXT_FIELDS = ["value", "label", "subtitle", "initials", "color", "src", "icon"]
@@ -114,7 +114,7 @@ def test_item_module_imports_in_a_fresh_interpreter():
     # Builds the model on a clean sys.modules, where the Slot annotation's
     # BaseComponent reference must resolve without help from other imports.
     code = (
-        "from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem\n"
+        "from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem\n"
         "assert PJXRosterItem(value='u1', label='Ada').extra == ''\n"
     )
     result = subprocess.run(

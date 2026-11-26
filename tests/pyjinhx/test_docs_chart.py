@@ -14,7 +14,7 @@ from pyjinhx.builtins import PJXChart, PJXChartSeries
 
 _ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = _ROOT / "docs" / "guide" / "chart.md"
-_CHART = _ROOT / "pyjinhx" / "builtins" / "ui" / "pjx_chart"
+_CHART = _ROOT / "pyjinhx" / "builtins" / "pjx_chart"
 _SOURCES = (_CHART / "pjx_chart.css", _CHART / "pjx_chart.pjx")
 
 # Built from the data by the component, never passed by the app.

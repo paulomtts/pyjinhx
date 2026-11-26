@@ -1,4 +1,4 @@
-"""One-off generator for pyjinhx/builtins/ui/pjx_icon/_icons.py.
+"""One-off generator for pyjinhx/builtins/pjx_icon/_icons.py.
 
 Downloads every Lucide icon at a pinned release and writes their inner SVG
 markup into _icons.py. Not imported by the package; run manually:
@@ -53,7 +53,7 @@ def main() -> None:
             icons[name] = fetch_inner(name)
         except Exception as exc:  # noqa: BLE001
             print(f"WARN skipping {name}: {exc}", file=sys.stderr)
-    out = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/ui/pjx_icon/_icons.py"
+    out = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/pjx_icon/_icons.py"
     lines = [
         '"""Vendored Lucide icon inner-SVG markup, keyed by name.',
         "",

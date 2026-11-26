@@ -10,7 +10,7 @@ coverage here and no registry fixture.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
+from pyjinhx.builtins.pjx_password_input import PJXPasswordInput
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

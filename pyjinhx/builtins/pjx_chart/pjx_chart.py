@@ -4,7 +4,7 @@ from typing import Any, Literal, Self
 from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
-from pyjinhx.builtins.ui.pjx_chart.series import FiniteFloat, PJXChartSeries
+from pyjinhx.builtins.pjx_chart.series import FiniteFloat, PJXChartSeries
 
 # One --pjx-chart-<n> colour token per series. A ninth series would need a
 # repeated or generated hue, which reads as the same series, so it is refused.

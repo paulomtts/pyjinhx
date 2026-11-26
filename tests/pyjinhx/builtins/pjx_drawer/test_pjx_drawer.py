@@ -1,4 +1,4 @@
-"""PJXDrawer renders the single-root <dialog> shell that composes the drawer parts (port of v0.x pyjinhx/builtins/ui/pjx_drawer)."""
+"""PJXDrawer renders the single-root <dialog> shell that composes the drawer parts (port of v0.x pyjinhx/builtins/pjx_drawer)."""
 
 import dataclasses
 
@@ -6,10 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_drawer import PJXDrawer
-from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
-from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
-from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx.builtins.pjx_drawer import PJXDrawer
+from pyjinhx.builtins.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx.builtins.pjx_drawer_header import PJXDrawerHeader
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

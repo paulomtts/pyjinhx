@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger import (
+from pyjinhx.builtins.pjx_tooltip_trigger.pjx_tooltip_trigger import (
     PJXTooltipTrigger,
 )
 

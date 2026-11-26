@@ -1,3 +1,3 @@
-from pyjinhx.builtins.ui.pjx_badge.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
 
 __all__ = ["PJXBadge"]

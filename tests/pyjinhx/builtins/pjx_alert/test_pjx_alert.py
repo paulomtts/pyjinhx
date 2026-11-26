@@ -10,8 +10,8 @@ gap, not fixed by #533.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_alert import PJXAlert
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_alert import PJXAlert
+from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

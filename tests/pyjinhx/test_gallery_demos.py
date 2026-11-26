@@ -89,7 +89,7 @@ def test_every_factory_renders():
 
 def test_post_build_inlines_component_css(tmp_path):
     from pyjinhx.assets import BUILTIN_ORIGIN_ATTR, asset_token
-    from pyjinhx.builtins.ui.pjx_button import PJXButton
+    from pyjinhx.builtins.pjx_button import PJXButton
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     page = (tmp_path / "demos" / "pjx-button.html").read_text()
@@ -104,7 +104,7 @@ def test_post_build_inlines_component_css(tmp_path):
 
 
 def test_post_build_inlines_component_js(tmp_path):
-    from pyjinhx.builtins.ui.pjx_accordion_group import PJXAccordionGroup
+    from pyjinhx.builtins.pjx_accordion_group import PJXAccordionGroup
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     page = (tmp_path / "demos" / "pjx-accordion-group.html").read_text()
@@ -115,7 +115,7 @@ def test_post_build_inlines_component_js(tmp_path):
 
 
 def test_multi_component_demo_emits_each_asset_once(tmp_path):
-    from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+    from pyjinhx.builtins.pjx_spinner import PJXSpinner
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
     page = (tmp_path / "demos" / "pjx-spinner.html").read_text()
@@ -286,7 +286,7 @@ def test_runtime_demos_are_registered_demos():
 
 
 def test_post_build_gives_the_graph_page_the_runtime_once_in_the_body(tmp_path):
-    from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+    from pyjinhx.builtins.pjx_graph import PJXGraph
     from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
 
     hooks.on_post_build({"site_dir": str(tmp_path)})
@@ -304,7 +304,7 @@ def test_post_build_gives_the_graph_page_the_runtime_once_in_the_body(tmp_path):
 def test_post_build_gives_the_roster_picker_page_the_runtime_once_in_the_body(
     tmp_path,
 ):
-    from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterPicker
+    from pyjinhx.builtins.pjx_roster_picker import PJXRosterPicker
     from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
 
     hooks.on_post_build({"site_dir": str(tmp_path)})

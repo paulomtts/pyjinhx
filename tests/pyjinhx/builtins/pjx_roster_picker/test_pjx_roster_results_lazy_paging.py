@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlsplit
 
-from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem
-from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem
+from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.client import read_vendored_htmx
 from pyjinhx.rendering import render
 
@@ -27,7 +27,6 @@ CSS = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_roster_picker"
     / "pjx_roster_picker.css"
 ).read_text(encoding="utf-8")

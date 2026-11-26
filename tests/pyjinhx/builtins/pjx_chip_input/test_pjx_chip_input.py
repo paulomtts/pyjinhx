@@ -10,7 +10,7 @@ coverage here and no registry fixture, unlike PJXButton's region-loader leg.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
+from pyjinhx.builtins.pjx_chip_input import PJXChipInput
 from pyjinhx.client import read_pjx_theme_css
 
 

@@ -1,9 +1,9 @@
-"""PJXDrawerFooter renders a single-root drawer region (port of v0.x pyjinhx/builtins/ui/pjx_drawer_footer)."""
+"""PJXDrawerFooter renders a single-root drawer region (port of v0.x pyjinhx/builtins/pjx_drawer_footer)."""
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_drawer_footer import PJXDrawerFooter
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_drawer_footer import PJXDrawerFooter
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

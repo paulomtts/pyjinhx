@@ -3,11 +3,11 @@ from typing import Annotated
 from pydantic import Field
 
 from pyjinhx._component import BaseComponent, PjxSlot, Slot
-from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.pjx_popover import PJXPopover
 
 
 class PJXDropdown(PJXPopover):
-    """A trigger button over a hidden menu panel, opened by the data-pjx-popover runtime (port of v0.x pyjinhx/builtins/ui/pjx_dropdown/pjx_dropdown.py).
+    """A trigger button over a hidden menu panel, opened by the data-pjx-popover runtime (port of v0.x pyjinhx/builtins/pjx_dropdown/pjx_dropdown.py).
 
     Extends PJXPopover for `align`, `class_name` and the popover runtime
     itself: the descriptor's MRO asset walk finds no `pjx_dropdown.js` beside

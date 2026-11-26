@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge.pjx_badge import PJXBadge
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 NODES = '<div data-test="nodes"></div>'
@@ -20,7 +20,6 @@ CSS = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph"
     / "pjx_graph.css"
 )

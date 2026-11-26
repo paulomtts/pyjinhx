@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_resizable_group.pjx_resizable_group import (
+from pyjinhx.builtins.pjx_resizable_group.pjx_resizable_group import (
     PJXResizableGroup,
 )
 

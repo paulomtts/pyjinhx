@@ -3,7 +3,7 @@ import logging
 from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs, Slot
-from pyjinhx.builtins.ui.pjx_icon._icons import ICONS
+from pyjinhx.builtins.pjx_icon._icons import ICONS
 
 logger = logging.getLogger(__name__)
 

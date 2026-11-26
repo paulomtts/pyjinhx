@@ -9,9 +9,9 @@ controller still carries the markers and handlers those tests depend on.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
-from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
-from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.pjx_resizable_group import PJXResizableGroup
+from pyjinhx.builtins.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

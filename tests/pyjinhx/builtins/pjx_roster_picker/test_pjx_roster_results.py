@@ -7,17 +7,13 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import _is_slot_field
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem
-from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
+from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem
+from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.rendering import render
 
 PACKAGE_DIR = (
-    Path(__file__).resolve().parents[4]
-    / "pyjinhx"
-    / "builtins"
-    / "ui"
-    / "pjx_roster_results"
+    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_results"
 )
 TEXT_FIELDS = [
     "picker_id",

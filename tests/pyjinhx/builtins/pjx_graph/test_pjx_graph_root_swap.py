@@ -18,17 +18,17 @@ from typing import TYPE_CHECKING
 
 from markupsafe import Markup
 
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
-from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
-from pyjinhx.builtins.ui.pjx_graph_edges import PJXGraphEdges
-from pyjinhx.builtins.ui.pjx_graph_node import PJXGraphNode
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph_controls import PJXGraphControls
+from pyjinhx.builtins.pjx_graph_edges import PJXGraphEdges
+from pyjinhx.builtins.pjx_graph_node import PJXGraphNode
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "ui"
+UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins"
 ASSET = UI / "pjx_graph" / "pjx_graph.js"
 CSS = "".join(
     (UI / name / f"{name}.css").read_text(encoding="utf-8")

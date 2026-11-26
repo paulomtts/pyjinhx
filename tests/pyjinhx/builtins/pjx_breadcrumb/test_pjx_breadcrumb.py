@@ -1,9 +1,9 @@
-"""PJXBreadcrumb renders the single-root <nav> trail of linked and current crumbs (port of v0.x pyjinhx/builtins/ui/pjx_breadcrumb)."""
+"""PJXBreadcrumb renders the single-root <nav> trail of linked and current crumbs (port of v0.x pyjinhx/builtins/pjx_breadcrumb)."""
 
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
+from pyjinhx.builtins.pjx_breadcrumb import PJXBreadcrumb
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control import (
+from pyjinhx.builtins.pjx_segmented_control.pjx_segmented_control import (
     PJXSegmentedControl,
 )
 

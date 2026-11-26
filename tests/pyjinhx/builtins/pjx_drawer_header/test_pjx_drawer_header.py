@@ -1,9 +1,9 @@
-"""PJXDrawerHeader renders a single-root drawer region with a close affordance (port of v0.x pyjinhx/builtins/ui/pjx_drawer_header)."""
+"""PJXDrawerHeader renders a single-root drawer region with a close affordance (port of v0.x pyjinhx/builtins/pjx_drawer_header)."""
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_drawer_header import PJXDrawerHeader
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_drawer_header import PJXDrawerHeader
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

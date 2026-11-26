@@ -7,17 +7,16 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import _resolve_children_field
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
-from pyjinhx.builtins.ui.pjx_graph_controls import PJXGraphControls
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
-from pyjinhx.builtins.ui.pjx_graph_side_panel import PJXGraphSidePanel
+from pyjinhx.builtins.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph_controls import PJXGraphControls
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_graph_side_panel import PJXGraphSidePanel
 from pyjinhx.rendering import render
 
 CSS = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph_side_panel"
     / "pjx_graph_side_panel.css"
 )

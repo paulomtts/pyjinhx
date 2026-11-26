@@ -1,11 +1,11 @@
-"""PJXBadge renders a single-root themeable label span (port of v0.x pyjinhx/builtins/ui/pjx_badge)."""
+"""PJXBadge renders a single-root themeable label span (port of v0.x pyjinhx/builtins/pjx_badge)."""
 
 import re
 
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_badge import PJXBadge
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

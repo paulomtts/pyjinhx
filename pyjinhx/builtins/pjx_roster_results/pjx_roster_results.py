@@ -3,11 +3,11 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
+from pyjinhx.builtins.pjx_avatar import PJXAvatar
+from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.builtins.pjx_lazy_load import PJXLazyLoad
-from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
-from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem
+from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
+from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem
 
 
 def _visual(item: PJXRosterItem) -> BaseComponent:

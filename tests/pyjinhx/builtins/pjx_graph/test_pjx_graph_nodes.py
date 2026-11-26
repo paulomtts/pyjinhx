@@ -4,8 +4,8 @@ import pytest
 from markupsafe import Markup
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge.pjx_badge import PJXBadge
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_badge.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 

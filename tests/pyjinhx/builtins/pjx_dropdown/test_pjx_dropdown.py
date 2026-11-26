@@ -1,4 +1,4 @@
-"""PJXDropdown renders a trigger button over a hidden menu panel wired to the popover runtime (port of v0.x pyjinhx/builtins/ui/pjx_dropdown/pjx_dropdown.py)."""
+"""PJXDropdown renders a trigger button over a hidden menu panel wired to the popover runtime (port of v0.x pyjinhx/builtins/pjx_dropdown/pjx_dropdown.py)."""
 
 import dataclasses
 
@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
+from pyjinhx.builtins.pjx_dropdown import PJXDropdown
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession, accumulate_assets
 

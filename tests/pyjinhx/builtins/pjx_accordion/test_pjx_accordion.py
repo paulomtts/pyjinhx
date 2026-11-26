@@ -1,11 +1,11 @@
-"""PJXAccordion renders the single-root <details> shell of the accordion family (port of v0.x pyjinhx/builtins/ui/pjx_accordion)."""
+"""PJXAccordion renders the single-root <details> shell of the accordion family (port of v0.x pyjinhx/builtins/pjx_accordion)."""
 
 import dataclasses
 
 import pytest
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_accordion import PJXAccordion
+from pyjinhx.builtins.pjx_accordion import PJXAccordion
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

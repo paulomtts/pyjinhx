@@ -20,7 +20,6 @@ SOURCE = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_chip_input"
     / "pjx_chip_input.js"
 )

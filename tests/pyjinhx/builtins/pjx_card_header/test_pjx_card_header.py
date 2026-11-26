@@ -1,9 +1,9 @@
-"""PJXCardHeader renders a single-root header with a title shortcut (port of v0.x pyjinhx/builtins/ui/pjx_card_header)."""
+"""PJXCardHeader renders a single-root header with a title shortcut (port of v0.x pyjinhx/builtins/pjx_card_header)."""
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_card_header import PJXCardHeader
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_card_header import PJXCardHeader
+from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

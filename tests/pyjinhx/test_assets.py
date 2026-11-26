@@ -286,7 +286,7 @@ def test_is_builtin_asset_true_for_a_path_under_pyjinhx_builtins():
     from pyjinhx.assets import _is_builtin_asset
 
     package_dir = Path(pyjinhx.__file__).parent
-    builtin_css = package_dir / "builtins" / "ui" / "pjx_popover" / "pjx_popover.css"
+    builtin_css = package_dir / "builtins" / "pjx_popover" / "pjx_popover.css"
     assert _is_builtin_asset(builtin_css) is True
 
 

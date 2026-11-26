@@ -10,7 +10,7 @@ rendered substrings, like every sibling port.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
+from pyjinhx.builtins.pjx_toggle_switch import PJXToggleSwitch
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

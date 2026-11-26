@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Builtins are flat: `pyjinhx/builtins/ui/<name>/` is now `pyjinhx/builtins/<name>/`.
+  Breaking: deep imports from `pyjinhx.builtins.ui.<name>` no longer exist; import
+  from `pyjinhx.builtins`. See the [migration guide](docs/migration.md).
+
 ## 1.17.0 — Fewer files per component (2026-11-26)
 
 ### Added

@@ -112,7 +112,7 @@ every page. Neither fits a library whose promise is server-rendered HTML.
   few hundred points per series is fine; tens of thousands is the case uPlot
   exists for.
 - The tick and layout code is ours to maintain: about 200 lines of Python in
-  `pyjinhx/builtins/ui/pjx_chart/pjx_chart.py`.
+  `pyjinhx/builtins/pjx_chart/pjx_chart.py`.
 - At most eight series, one per palette colour. A ninth is refused rather than
   given a repeated colour.
 - Bars are rounded at both ends. Squaring the end on the zero line needs a

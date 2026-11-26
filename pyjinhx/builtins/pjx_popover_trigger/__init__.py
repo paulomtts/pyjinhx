@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_popover_trigger.pjx_popover_trigger import (
+from pyjinhx.builtins.pjx_popover_trigger.pjx_popover_trigger import (
     PJXPopoverTrigger,
 )
 

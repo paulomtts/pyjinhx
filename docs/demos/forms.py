@@ -1,9 +1,9 @@
-from pyjinhx.builtins.ui.pjx_chip_input import PJXChipInput
-from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
-from pyjinhx.builtins.ui.pjx_password_input import PJXPasswordInput
-from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
-from pyjinhx.builtins.ui.pjx_select import PJXSelect, SelectOption
-from pyjinhx.builtins.ui.pjx_toggle_switch import PJXToggleSwitch
+from pyjinhx.builtins.pjx_chip_input import PJXChipInput
+from pyjinhx.builtins.pjx_form_field import PJXFormField
+from pyjinhx.builtins.pjx_password_input import PJXPasswordInput
+from pyjinhx.builtins.pjx_segmented_control import PJXSegmentedControl
+from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
+from pyjinhx.builtins.pjx_toggle_switch import PJXToggleSwitch
 
 
 def chip_input():

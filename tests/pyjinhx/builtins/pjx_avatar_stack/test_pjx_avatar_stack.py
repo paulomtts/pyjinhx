@@ -1,9 +1,9 @@
-"""PJXAvatarStack renders overlapping avatar pills (port of v0.x pyjinhx/builtins/ui/pjx_avatar_stack)."""
+"""PJXAvatarStack renders overlapping avatar pills (port of v0.x pyjinhx/builtins/pjx_avatar_stack)."""
 
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_avatar_stack import PJXAvatarStack
+from pyjinhx.builtins.pjx_avatar_stack import PJXAvatarStack
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
@@ -135,7 +135,7 @@ def test_base_component_avatar_renders_raw(stack_session):
     `avatars` is marked as a slot field — that is what makes build_context
     re-read the live value and hand the template a ComponentNode.
     """
-    from pyjinhx.builtins.ui.pjx_avatar import PJXAvatar
+    from pyjinhx.builtins.pjx_avatar import PJXAvatar
 
     html = _html(stack_session, avatars=[PJXAvatar(id="inner", initials="AL")])
     assert 'id="inner"' in html

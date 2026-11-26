@@ -9,18 +9,14 @@ from pydantic import ValidationError
 
 from pyjinhx import discovery
 from pyjinhx._component import _is_slot_field
-from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
 from pyjinhx.classless import component
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import accumulate_assets
 
 PACKAGE_DIR = (
-    Path(__file__).resolve().parents[4]
-    / "pyjinhx"
-    / "builtins"
-    / "ui"
-    / "pjx_roster_picker"
+    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_picker"
 )
 CSS_PATH = PACKAGE_DIR / "pjx_roster_picker.css"
 JS_PATH = PACKAGE_DIR / "pjx_roster_picker.js"

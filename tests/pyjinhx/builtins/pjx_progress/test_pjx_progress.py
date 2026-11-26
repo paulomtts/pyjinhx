@@ -1,9 +1,9 @@
-"""PJXProgress renders a progress bar / loading indicator (port of v0.x pyjinhx/builtins/ui/pjx_progress)."""
+"""PJXProgress renders a progress bar / loading indicator (port of v0.x pyjinhx/builtins/pjx_progress)."""
 
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_progress import PJXProgress
+from pyjinhx.builtins.pjx_progress import PJXProgress
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

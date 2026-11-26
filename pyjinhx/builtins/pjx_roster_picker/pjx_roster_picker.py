@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from pyjinhx._component import AttrValue, BaseComponent, ExtraAttrs
-from pyjinhx.builtins.ui.pjx_roster_chip import PJXRosterChip
-from pyjinhx.builtins.ui.pjx_roster_picker.item import PJXRosterItem
+from pyjinhx.builtins.pjx_roster_chip import PJXRosterChip
+from pyjinhx.builtins.pjx_roster_picker.item import PJXRosterItem
 
 
 class PJXRosterPicker(BaseComponent):

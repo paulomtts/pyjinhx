@@ -1,10 +1,10 @@
-"""PJXTab renders one tab trigger, optionally with an icon and a close button (port of v0.x pyjinhx/builtins/ui/pjx_tab)."""
+"""PJXTab renders one tab trigger, optionally with an icon and a close button (port of v0.x pyjinhx/builtins/pjx_tab)."""
 
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_tab import PJXTab
+from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_tab import PJXTab
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

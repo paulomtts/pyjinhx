@@ -10,8 +10,8 @@ not currently honor; tracked as a pre-existing gap, not fixed by #534.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.pjx_divider import PJXDivider
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -29,11 +29,11 @@ def test_is_exported_lazily_from_builtins():
     assert "PJXChart" in pyjinhx.builtins.__all__
     assert "PJXChartSeries" in pyjinhx.builtins.__all__
     assert pyjinhx.builtins._lazy_imports["PJXChart"] == (
-        "pyjinhx.builtins.ui.pjx_chart.pjx_chart",
+        "pyjinhx.builtins.pjx_chart.pjx_chart",
         "PJXChart",
     )
     assert pyjinhx.builtins._lazy_imports["PJXChartSeries"] == (
-        "pyjinhx.builtins.ui.pjx_chart.series",
+        "pyjinhx.builtins.pjx_chart.series",
         "PJXChartSeries",
     )
 

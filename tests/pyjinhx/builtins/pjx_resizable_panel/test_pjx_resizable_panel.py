@@ -11,7 +11,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.pjx_resizable_panel import PJXResizablePanel
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

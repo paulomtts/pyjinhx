@@ -1,11 +1,11 @@
-"""PJXAccordionContent renders the accordion body region (port of v0.x pyjinhx/builtins/ui/pjx_accordion_content)."""
+"""PJXAccordionContent renders the accordion body region (port of v0.x pyjinhx/builtins/pjx_accordion_content)."""
 
 import dataclasses
 
 import pytest
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_accordion_content import PJXAccordionContent
+from pyjinhx.builtins.pjx_accordion_content import PJXAccordionContent
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

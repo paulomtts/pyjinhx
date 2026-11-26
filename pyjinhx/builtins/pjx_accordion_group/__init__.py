@@ -1,4 +1,4 @@
-from pyjinhx.builtins.ui.pjx_accordion_group.pjx_accordion_group import (
+from pyjinhx.builtins.pjx_accordion_group.pjx_accordion_group import (
     PJXAccordionGroup,
 )
 

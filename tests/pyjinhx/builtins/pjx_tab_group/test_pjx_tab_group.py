@@ -1,9 +1,9 @@
-"""PJXTabGroup renders the single-root group shell of the tab family (port of v0.x pyjinhx/builtins/ui/pjx_tab_group)."""
+"""PJXTabGroup renders the single-root group shell of the tab family (port of v0.x pyjinhx/builtins/pjx_tab_group)."""
 
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
+from pyjinhx.builtins.pjx_tab_group import PJXTabGroup
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
