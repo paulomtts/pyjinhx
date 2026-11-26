@@ -7,6 +7,42 @@
     those two versions, never as a description of how pyjinhx behaves today. The topmost
     section is the only one that describes current behaviour.
 
+## 1.17.x → next (module layout)
+
+The public API is unchanged: everything in `pyjinhx.__all__` and in
+`pyjinhx.builtins` imports exactly as before, and `python -m pyjinhx.manifest`
+and `python -m pyjinhx.stubgen` still work. The internal modules moved into three
+packages by role, with no shims, so a deep import of the old path now raises
+`ImportError`. Several docs and apps imported these "not yet public" paths
+(`request_scope`, `all_assets`, `resolver_with_hash`, `register_instance`,
+`compose`, ...); change them as follows.
+
+| old | new |
+|---|---|
+| `pyjinhx.sfc` | `pyjinhx.document.scanner` |
+| `pyjinhx.template_blocks` | `pyjinhx.document.template_blocks` |
+| `pyjinhx._component` | `pyjinhx.components.base` |
+| `pyjinhx.descriptor` (`ClassDescriptor`) | `pyjinhx.components.base` |
+| `pyjinhx.classless` | `pyjinhx.components.classless` |
+| `pyjinhx.discovery` | `pyjinhx.components.discovery` |
+| `pyjinhx.importer` | `pyjinhx.components.importer` |
+| `pyjinhx.props_header` | `pyjinhx.components.props_header` |
+| `pyjinhx.rendering` | `pyjinhx.rendering.pipeline` |
+| `pyjinhx.session` | `pyjinhx.rendering.session` |
+| `pyjinhx.render_cache` | `pyjinhx.rendering.render_cache` |
+| `pyjinhx.assets` | `pyjinhx.rendering.assets` |
+| `pyjinhx.segments` | `pyjinhx.rendering.segments` |
+| `pyjinhx.root_attrs` | `pyjinhx.rendering.root_attrs` |
+| `pyjinhx.registry` | `pyjinhx.rendering.registry` |
+| `pyjinhx.markers`, `pyjinhx.render_context` | `pyjinhx.rendering.template_context` |
+| `pyjinhx.responses` | `pyjinhx.integrations.responses` |
+
+`pyjinhx.config`, `context`, `app_context`, `dev`, `manifest`, `stubgen`,
+`reactive`, `integrations`, `client` and `builtins` did not move. Note that
+`from pyjinhx import registry` (and `discovery`, `session`, ...) no longer
+works; import the module from its package, for example
+`from pyjinhx.rendering import registry`.
+
 ## 1.17.x → next (flat builtins)
 
 Deep imports from `pyjinhx.builtins.ui.<name>` no longer exist. Replace
@@ -924,10 +960,11 @@ class TodoList(ReactiveComponent):
         return cls(items=ctx.db.todos_for(ctx.user) if ctx else [])
 ```
 
-### `pyjinhx.render` → `pyjinhx.rendering.pipeline`
+### `pyjinhx.render` → `pyjinhx.rendering`
 
-The render-pipeline submodule is `pyjinhx.rendering.pipeline` in 1.0 (`render()`, `render_level()`
-internals). If you imported from a `pyjinhx.render` submodule directly rather than the
+The render-pipeline submodule was `pyjinhx.rendering` in 1.0 (`render()`, `render_level()`
+internals; it is `pyjinhx.rendering.pipeline` since the module layout changed, see the
+newest section above). If you imported from a `pyjinhx.render` submodule directly rather than the
 top-level `pyjinhx.render` function, update the import path.
 
 ### What still works unchanged
