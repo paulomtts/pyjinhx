@@ -14,7 +14,7 @@ from pyjinhx.components.base import BaseComponent
 from pyjinhx.components.discovery import build_registry
 from pyjinhx.rendering.pipeline import render as v2_render
 from pyjinhx.rendering.session import RenderSession
-from tests.fixtures.bench_builtin_heavy import (
+from tests.fixtures.bench.bench_builtin_heavy import (
     V0_MANIFEST,
     V2_MANIFEST,
     build_v0_page,
