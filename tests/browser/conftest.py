@@ -19,7 +19,7 @@ def _require_chromium(request: pytest.FixtureRequest) -> None:
     # launch failure instead of a clean skip. Only tests that ask for a page
     # need chromium, so avoid resolving `browser_type` (or importing
     # playwright) for the rest.
-    if not {"pjx_page", "pjx_full_page", "page"} & set(request.fixturenames):
+    if not {"pjx_page", "pjx_full_page", "page", "browser"} & set(request.fixturenames):
         return
     pytest.importorskip("playwright")
     browser_type: Any = request.getfixturevalue("browser_type")
