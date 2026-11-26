@@ -1,4 +1,5 @@
-"""Browser tests for pjx_graph's updates held during a gesture and review fixes."""
+"""Browser tests for pjx_graph's updates held during a gesture, plus
+hidden or resized nodes, root swaps and panel history after one."""
 
 from __future__ import annotations
 

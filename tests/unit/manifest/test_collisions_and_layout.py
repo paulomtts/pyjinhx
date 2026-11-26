@@ -1,4 +1,5 @@
-"""Tests for manifest name collisions, module layout and the remaining entry details."""
+"""Tests for manifest name collisions, module layout, stale headers,
+strict flags, sibling assets, scan failures and range handling."""
 
 import json
 from pathlib import Path

@@ -1,4 +1,5 @@
-"""Browser tests for pjx_graph's interaction after swaps, edge changes and node lookup."""
+"""Browser tests for pjx_graph's handler binding and selection after swaps,
+edge changes by attribute, node position attributes and node lookup."""
 
 from __future__ import annotations
 
