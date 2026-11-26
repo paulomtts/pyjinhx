@@ -17,6 +17,8 @@ TESTS = Path(__file__).parent
 
 def pytest_collection_modifyitems(items):
     for item in items:
+        if not item.path.is_relative_to(TESTS):
+            continue
         folder = item.path.relative_to(TESTS).parts[0]
         if folder in ("browser", "docs"):
             item.add_marker(folder)
