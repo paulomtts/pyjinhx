@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.17.0 — Fewer files per component (2026-11-26)
 
 ### Added
 - A component is a pjx document, optionally owned by a class. The document
@@ -62,7 +62,18 @@
 - A `{#def#}`, `{#css#}` or `{#js#}` block alone on its line no longer leaves a
   blank line in the output, so a headed template no longer renders a leading
   newline. Line numbers in errors are unchanged.
-- Startup was quadratic for many `template = r"""..."""` classes in one module.
+
+### Fixed
+- An OOB `<style>`/`<script>` aimed at `<head>` no longer leaves its CSS/JS
+  behind as loose text nodes in `<head>`; `pjx.js` cancels that swap and adds
+  the real asset itself.
+- Head assets (CSS and JS) carried by a response are no longer dropped when
+  another swap detached the requesting element and its whole ancestor chain
+  before the response arrived. `pjx.js` now applies them from the request's
+  own `load` event instead of `htmx:afterRequest`, which htmx fires on the
+  requester or its nearest attached ancestor.
+- Startup is no longer quadratic for many `template = r"""..."""` classes in one module.
+
 
 ## 1.16.0 — Graph ports and wire events (2026-11-21)
 

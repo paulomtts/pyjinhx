@@ -1,0 +1,125 @@
+"""Head assets must land even when the requesting element left the document.
+
+Runs real htmx: htmx fires htmx:afterRequest on the requester, so a requester
+that was swapped away before its response arrives never reaches pjx.js's
+body listener. Only the xhr itself still knows the response is in.
+"""
+
+from __future__ import annotations
+
+from pyjinhx.client import read_pjx_runtime, read_vendored_htmx
+
+URL = "http://pjx.test/"
+RESPONSE = (
+    '<style data-pjx-asset="card.css" hx-swap-oob="beforeend:head">.c{color:red}</style>'
+    '<div hx-swap-oob="beforeend:body"><i id="card"></i></div>'
+)
+PAGE = (
+    '<html><head></head><body><div id="shell">'
+    '<button id="btn" hx-post="/post" hx-swap="none">go</button></div></body></html>'
+)
+HEAD_TOKENS = (
+    "() => Array.from(document.head.querySelectorAll('[data-pjx-asset]'))"
+    ".map(n => n.getAttribute('data-pjx-asset'))"
+)
+
+
+def _open(page):
+    page.route(
+        URL,
+        lambda route: route.fulfill(content_type="text/html", body=PAGE),
+    )
+    page.route(
+        URL + "post",
+        lambda route: route.fulfill(content_type="text/html", body=RESPONSE),
+    )
+    page.goto(URL)
+    page.add_script_tag(content=read_vendored_htmx())
+    page.add_script_tag(content=read_pjx_runtime())
+
+
+def test_head_assets_apply_when_the_requester_is_detached_before_the_response(page):
+    _open(page)
+    page.evaluate(
+        """() => document.body.addEventListener('htmx:beforeRequest', () => {
+             document.getElementById('shell').remove();
+           })"""
+    )
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_selector("#card", state="attached")
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+def test_head_assets_apply_when_the_requester_is_still_attached(page):
+    _open(page)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_selector("#card", state="attached")
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+HEAD_TEXT = (
+    "() => Array.from(document.head.childNodes)"
+    ".filter(n => n.nodeType === 3 && n.textContent.trim() !== '')"
+    ".map(n => n.textContent)"
+)
+
+
+def test_oob_head_swap_leaves_no_loose_text_in_head(page):
+    _open(page)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_selector("#card", state="attached")
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("document.querySelectorAll('#card').length === 2")
+    assert page.evaluate(HEAD_TEXT) == []
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+def _open_with(page, response, status=200):
+    """Like `_open`, with a custom /post response."""
+    _open(page)
+    page.unroute(URL + "post")
+    page.route(
+        URL + "post",
+        lambda route: route.fulfill(
+            status=status, content_type="text/html", body=response
+        ),
+    )
+
+
+def test_error_response_still_applies_head_assets(page):
+    _open_with(page, RESPONSE, status=500)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("document.head.querySelector('[data-pjx-asset]')")
+    assert page.evaluate(HEAD_TOKENS) == ["card.css"]
+
+
+def test_head_script_runs_after_the_body_swap(page):
+    response = (
+        '<script data-pjx-asset="seen.js" hx-swap-oob="beforeend:head">'
+        'window.seen = !!document.getElementById("card")</script>'
+        '<div hx-swap-oob="beforeend:body"><i id="card"></i></div>'
+    )
+    _open_with(page, response)
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_function("window.seen !== undefined")
+    assert page.evaluate("window.seen") is True
+
+
+def test_request_cancelled_by_a_later_listener_applies_nothing(page):
+    _open(page)
+    page.evaluate(
+        """() => document.body.addEventListener('htmx:beforeRequest',
+             (e) => e.preventDefault())"""
+    )
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate(HEAD_TOKENS) == []
+
+
+def test_aborted_request_applies_nothing(page):
+    _open(page)
+    page.unroute(URL + "post")
+    page.route(URL + "post", lambda route: route.abort())
+    page.evaluate("document.getElementById('btn').click()")
+    page.wait_for_timeout(300)
+    assert page.evaluate(HEAD_TOKENS) == []

@@ -86,9 +86,11 @@
     document.head.appendChild(node);
   }
 
-  // htmx core silently drops hx-swap-oob swaps that target <head>, so the
-  // component assets the server carries alongside OOB fragments have to be
-  // parsed out of the raw response and appended here. Fresh nodes: a parsed
+  // htmx cannot add a <style>/<script> to <head> through an OOB swap: a
+  // non-outerHTML swap inserts the element's children, leaving its CSS/JS as
+  // loose text. So the component assets the server carries alongside OOB
+  // fragments are parsed out of the raw response and appended here, and the
+  // head-targeted swap itself is cancelled (pjxSkipHeadSwap). Fresh nodes: a parsed
   // <script> clone never executes. Dedup is per token, not per node, because
   // swaps replace the nodes that carried the previous copy.
   function pjxApplyHeadAssets(html) {
@@ -127,9 +129,24 @@
     );
   }
 
-  function pjxApplyHeadAssetsFromRequest(evt) {
+  // htmx fires htmx:afterRequest on the requester, falling back to its first
+  // still-attached ancestor. When the whole ancestor chain was swapped out
+  // before the response arrived, no body listener sees it. The xhr's own load
+  // event does not depend on the DOM.
+  function pjxSkipHeadSwap(evt) {
+    if (evt.detail && evt.detail.target === document.head) {
+      evt.detail.shouldSwap = false;
+    }
+  }
+
+  function pjxApplyHeadAssetsOnLoad(evt) {
     var xhr = evt.detail && evt.detail.xhr;
-    pjxApplyHeadAssets(xhr && xhr.responseText);
+    if (!xhr || evt.defaultPrevented) {
+      return; // cancelled request: its xhr is never sent
+    }
+    xhr.addEventListener("load", function () {
+      pjxApplyHeadAssets(xhr.responseText);
+    });
   }
 
   // A cold render (or a swapped-in fragment) emits <style data-pjx-asset>
@@ -364,7 +381,9 @@
 
   pjxPromoteInlineAssets();
   document.body.addEventListener("htmx:configRequest", pjxConfigRequest);
-  document.body.addEventListener("htmx:afterRequest", pjxApplyHeadAssetsFromRequest);
+  // on document, not body: htmx dispatches oobBeforeSwap on the swap target
+  document.addEventListener("htmx:oobBeforeSwap", pjxSkipHeadSwap);
+  document.body.addEventListener("htmx:beforeRequest", pjxApplyHeadAssetsOnLoad);
   document.body.addEventListener("htmx:beforeRequest", pjxBeginLoading);
   document.body.addEventListener("htmx:afterOnLoad", pjxEndLoading);
   document.body.addEventListener("htmx:responseError", pjxEndLoading);
