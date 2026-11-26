@@ -65,7 +65,7 @@ rendering/  ──▶  components/  ──▶  document/
 - `client/` and `builtins/` may import from `reactive/`, `rendering/` and `components/`; nothing below them imports back up.
 - `reactive/` must not import from `integrations/`, `client/` or `builtins/`.
 - `rendering/` and `components/` may import from `reactive/` only where render paths require it (`rendering/render_cache.py`); avoid pulling `integrations/` upward into them. `document/` imports nothing else in pyjinhx.
-- The exact edges are the table in `tests/packaging/test_import_graph.py`.
+- The exact edges are the table in `tests/packaging/_import_edges.py`.
 
 ## Suite order
 
