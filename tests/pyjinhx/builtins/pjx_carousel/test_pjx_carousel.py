@@ -10,9 +10,9 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx import discovery
-from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
-from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_carousel import PJXCarousel
+from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.pjx_icon import PJXIcon
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

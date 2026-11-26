@@ -1,4 +1,4 @@
-"""One-off generator for pyjinhx/builtins/ui/pjx_roster_picker/pjx_roster_picker.js.
+"""One-off generator for pyjinhx/builtins/pjx_roster_picker/pjx_roster_picker.js.
 
 A builtin ships exactly one script, and the picker needs ``pjx.popoverPosition``,
 so its asset is the popover placement primitive (../pjx_popover/pjx_popover_position.js)
@@ -14,9 +14,7 @@ A test compares the committed file with ``build()``, so a stale asset fails CI.
 
 from pathlib import Path
 
-PICKER_DIR = (
-    Path(__file__).resolve().parents[1] / "pyjinhx/builtins/ui/pjx_roster_picker"
-)
+PICKER_DIR = Path(__file__).resolve().parents[1] / "pyjinhx/builtins/pjx_roster_picker"
 POPOVER_SOURCE = PICKER_DIR.parent / "pjx_popover/pjx_popover_position.js"
 PICKER_SOURCE = PICKER_DIR / "src/picker.js"
 OUT = PICKER_DIR / "pjx_roster_picker.js"

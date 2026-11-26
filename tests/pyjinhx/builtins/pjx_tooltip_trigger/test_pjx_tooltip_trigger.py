@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_tooltip_trigger import PJXTooltipTrigger
+from pyjinhx.builtins.pjx_tooltip_trigger import PJXTooltipTrigger
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

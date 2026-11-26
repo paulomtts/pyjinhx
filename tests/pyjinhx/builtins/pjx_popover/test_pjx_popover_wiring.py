@@ -19,7 +19,6 @@ CONTROLLER = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_popover"
     / "pjx_popover.js"
 )

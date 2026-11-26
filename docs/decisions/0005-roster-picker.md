@@ -16,7 +16,7 @@ events carry.
 ## Decision: a separate family, not a `PJXSelect` mode
 
 `PJXSelect` renders a fixed `options` list of `SelectOption`
-(`pyjinhx/builtins/ui/pjx_select/pjx_select.py`). The picker owns none of its
+(`pyjinhx/builtins/pjx_select/pjx_select.py`). The picker owns none of its
 options: it sends `q`, `exclude` and `picker_id` to an app route that answers
 with `PJXRosterResults`, pages long lists with a `PJXLazyLoad` sentinel, and
 keeps the selection as chips. `PJXSelect` is unchanged.
@@ -24,7 +24,7 @@ keeps the selection as chips. `PJXSelect` is unchanged.
 ## Decision: `items`, not nested chip markup
 
 The picker and the results take `items: list[PJXRosterItem]`, a frozen pydantic
-model (`pyjinhx/builtins/ui/pjx_roster_picker/item.py`) with `value`, `label`,
+model (`pyjinhx/builtins/pjx_roster_picker/item.py`) with `value`, `label`,
 `subtitle`, `initials`, `color`, `src`, `icon` and two `Slot`s, `extra` and
 `detail`. The picker builds one `PJXRosterChip` per item, so the form `name`,
 `disabled` and `remove_label` are stated once on the picker. This is the

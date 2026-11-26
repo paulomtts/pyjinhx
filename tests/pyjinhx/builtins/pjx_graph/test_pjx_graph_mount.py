@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
-from pyjinhx.builtins.ui.pjx_graph_nodes import PJXGraphNodes
+from pyjinhx.builtins.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph_nodes import PJXGraphNodes
 from pyjinhx.rendering import render
 
 if TYPE_CHECKING:
@@ -23,7 +23,6 @@ ASSET = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph"
     / "pjx_graph.js"
 )

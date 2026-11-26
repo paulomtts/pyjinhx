@@ -8,7 +8,7 @@ side by pjx_toast_host.js; the server renders only the empty host container.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx.builtins.pjx_toast_host import PJXToastHost
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -41,10 +41,10 @@ EXPECTED_EXPORTS = {
 }
 
 ROSTER_EXPORTS = {
-    "PJXRosterChip": "pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip",
-    "PJXRosterItem": "pyjinhx.builtins.ui.pjx_roster_picker.item",
-    "PJXRosterPicker": "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
-    "PJXRosterResults": "pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results",
+    "PJXRosterChip": "pyjinhx.builtins.pjx_roster_chip.pjx_roster_chip",
+    "PJXRosterItem": "pyjinhx.builtins.pjx_roster_picker.item",
+    "PJXRosterPicker": "pyjinhx.builtins.pjx_roster_picker.pjx_roster_picker",
+    "PJXRosterResults": "pyjinhx.builtins.pjx_roster_results.pjx_roster_results",
 }
 
 

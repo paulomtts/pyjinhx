@@ -7,7 +7,7 @@ subtasks; nothing here anticipates their markup. The exhaustive suite is #869's.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_select import PJXSelect, SelectOption
+from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

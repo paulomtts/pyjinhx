@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_modal_footer import PJXModalFooter
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_modal_footer import PJXModalFooter
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_breadcrumb import PJXBreadcrumb
+from pyjinhx.builtins.pjx_breadcrumb import PJXBreadcrumb
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

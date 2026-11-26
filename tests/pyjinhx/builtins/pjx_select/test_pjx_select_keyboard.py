@@ -17,7 +17,7 @@ import pytest
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
-UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "ui"
+UI = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins"
 CONTROLLER = UI / "pjx_select" / "pjx_select.js"
 
 

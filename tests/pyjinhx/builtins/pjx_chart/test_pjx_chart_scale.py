@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_chart.pjx_chart import _compact, _format_value, _nice_ticks
+from pyjinhx.builtins.pjx_chart.pjx_chart import _compact, _format_value, _nice_ticks
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Builtins are flat: `pyjinhx/builtins/ui/<name>/` is now `pyjinhx/builtins/<name>/`.
+  Breaking: deep imports from `pyjinhx.builtins.ui.<name>` no longer exist; import
+  from `pyjinhx.builtins`. See the [migration guide](docs/migration.md).
+- Builtin asset URLs and paths drop the `ui/` segment (for example
+  `.../builtins/pjx_button/pjx_button.<hash>.css`). Apps that use `resolver_with_hash`
+  or `all_assets()` bundling, copy static files, mount routes or pin a CSP by path
+  need to update them.
+
 ## 1.17.0 — Fewer files per component (2026-11-26)
 
 ### Added

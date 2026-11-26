@@ -5,7 +5,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_badge import PJXBadge
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

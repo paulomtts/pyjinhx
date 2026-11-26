@@ -18,7 +18,6 @@ ASSET = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph"
     / "pjx_graph.js"
 )

@@ -87,7 +87,7 @@ class TestRender:
         )
 
     def test_component_content_renders_inside_the_root(self, session):
-        from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+        from pyjinhx.builtins.pjx_badge import PJXBadge
 
         html = _html(session, content=PJXBadge(id="b1", label="soon"))
         assert 'id="b1"' in html
@@ -122,7 +122,7 @@ class TestErrorAffordance:
         assert "<template data-pjx-lazy-error><p>Boom</p></template>" in html
 
     def test_error_component_renders_raw_inside_the_template(self, session):
-        from pyjinhx.builtins.ui.pjx_badge import PJXBadge
+        from pyjinhx.builtins.pjx_badge import PJXBadge
 
         html = _html(session, error=PJXBadge(id="e1", label="offline"))
         assert "<template data-pjx-lazy-error>" in html

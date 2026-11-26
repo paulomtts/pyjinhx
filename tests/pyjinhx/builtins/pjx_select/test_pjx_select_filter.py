@@ -7,7 +7,7 @@ and the exhaustive cross-cutting suite (#869) are separate subtasks.
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_select import PJXSelect, SelectOption
+from pyjinhx.builtins.pjx_select import PJXSelect, SelectOption
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
@@ -41,7 +41,6 @@ class TestFields:
             Path(__file__).resolve().parents[4]
             / "pyjinhx"
             / "builtins"
-            / "ui"
             / "pjx_select"
             / "pjx_select.pjx"
         ).read_text()
@@ -59,7 +58,6 @@ class TestFields:
             Path(__file__).resolve().parents[4]
             / "pyjinhx"
             / "builtins"
-            / "ui"
             / "pjx_select"
             / "pjx_select.css"
         ).read_text()
@@ -172,7 +170,6 @@ CONTROLLER = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_select"
     / "pjx_select.js"
 )
@@ -208,7 +205,6 @@ class TestController:
             Path(__file__).resolve().parents[4]
             / "pyjinhx"
             / "builtins"
-            / "ui"
             / "pjx_popover"
             / "pjx_popover_position.js"
         ).read_text()

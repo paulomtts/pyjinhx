@@ -10,11 +10,9 @@ from types import ModuleType
 import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
-PICKER_DIR = ROOT / "pyjinhx" / "builtins" / "ui" / "pjx_roster_picker"
+PICKER_DIR = ROOT / "pyjinhx" / "builtins" / "pjx_roster_picker"
 PICKER = PICKER_DIR / "src" / "picker.js"
-POPOVER = (
-    ROOT / "pyjinhx" / "builtins" / "ui" / "pjx_popover" / "pjx_popover_position.js"
-)
+POPOVER = ROOT / "pyjinhx" / "builtins" / "pjx_popover" / "pjx_popover_position.js"
 SCRIPT = ROOT / "scripts" / "build_pjx_roster_picker_js.py"
 ASSET = PICKER_DIR / "pjx_roster_picker.js"
 

@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlsplit
 
-from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
-from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
+from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 from pyjinhx.client import read_vendored_htmx
 from pyjinhx.rendering import render
 
@@ -25,11 +25,7 @@ if TYPE_CHECKING:
     from pyjinhx.session import RenderSession
 
 PICKER_DIR = (
-    Path(__file__).resolve().parents[4]
-    / "pyjinhx"
-    / "builtins"
-    / "ui"
-    / "pjx_roster_picker"
+    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_roster_picker"
 )
 CSS = (PICKER_DIR / "pjx_roster_picker.css").read_text(encoding="utf-8")
 ASSET = (PICKER_DIR / "pjx_roster_picker.js").read_text(encoding="utf-8")

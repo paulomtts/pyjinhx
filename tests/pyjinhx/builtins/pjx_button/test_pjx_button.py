@@ -8,7 +8,7 @@ over: v2 builtins assert on rendered substrings, like every sibling port.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_button import PJXButton
+from pyjinhx.builtins.pjx_button import PJXButton
 
 
 class TestFields:

@@ -8,11 +8,9 @@ byte-identical copy and this test is what keeps the two from drifting.
 from pathlib import Path
 
 from pyjinhx._component import _resolve_asset_paths
-from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.pjx_popover import PJXPopover
 
-ASSETS = (
-    Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "ui" / "pjx_popover"
-)
+ASSETS = Path(__file__).resolve().parents[4] / "pyjinhx" / "builtins" / "pjx_popover"
 CONTROLLER = ASSETS / "pjx_popover.js"
 PRIMITIVE = ASSETS / "pjx_popover_position.js"
 

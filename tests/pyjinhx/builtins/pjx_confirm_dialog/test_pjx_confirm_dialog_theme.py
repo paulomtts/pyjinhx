@@ -16,7 +16,6 @@ CONFIRM_CSS = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_confirm_dialog"
     / "pjx_confirm_dialog.css"
 )

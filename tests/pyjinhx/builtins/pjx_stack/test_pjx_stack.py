@@ -6,8 +6,8 @@ from collections.abc import Iterator
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_badge import PJXBadge
-from pyjinhx.builtins.ui.pjx_stack import PJXStack
+from pyjinhx.builtins.pjx_badge import PJXBadge
+from pyjinhx.builtins.pjx_stack import PJXStack
 from pyjinhx.client import read_pjx_theme_css
 from pyjinhx.client.inject import inject_runtime
 from pyjinhx.config import PjxSettings, configure_pyjinhx, shutdown_pyjinhx

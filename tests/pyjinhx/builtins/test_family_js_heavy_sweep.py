@@ -24,15 +24,15 @@ import pytest
 
 from pyjinhx import discovery
 from pyjinhx._component import BaseComponent, Slot, _pascal_to_snake
-from pyjinhx.builtins.ui.pjx_alert import PJXAlert
-from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
-from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_notification import PJXNotification
-from pyjinhx.builtins.ui.pjx_resizable_group import PJXResizableGroup
-from pyjinhx.builtins.ui.pjx_resizable_handle import PJXResizableHandle
-from pyjinhx.builtins.ui.pjx_resizable_panel import PJXResizablePanel
-from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx.builtins.pjx_alert import PJXAlert
+from pyjinhx.builtins.pjx_carousel import PJXCarousel
+from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_notification import PJXNotification
+from pyjinhx.builtins.pjx_resizable_group import PJXResizableGroup
+from pyjinhx.builtins.pjx_resizable_handle import PJXResizableHandle
+from pyjinhx.builtins.pjx_resizable_panel import PJXResizablePanel
+from pyjinhx.builtins.pjx_toast_host import PJXToastHost
 from pyjinhx.classless import component
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession

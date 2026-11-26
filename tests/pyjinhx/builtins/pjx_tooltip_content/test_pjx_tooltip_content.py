@@ -5,7 +5,7 @@ import dataclasses
 import pytest
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_tooltip_content import PJXTooltipContent
+from pyjinhx.builtins.pjx_tooltip_content import PJXTooltipContent
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -1,5 +1,5 @@
 // Applies the region loading class. Lives next to pjx.js rather than under
-// builtins/ui/ because it has no host element, no template and no descriptor:
+// builtins/ because it has no host element, no template and no descriptor:
 // it ships unconditionally with the runtime, not through the lazy-asset door.
 (function () {
   function targets(id) {

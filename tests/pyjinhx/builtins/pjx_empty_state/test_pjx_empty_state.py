@@ -3,8 +3,8 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_empty_state import PJXEmptyState
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_empty_state import PJXEmptyState
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

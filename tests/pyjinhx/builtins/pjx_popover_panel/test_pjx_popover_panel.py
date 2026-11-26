@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_popover_panel import PJXPopoverPanel
+from pyjinhx.builtins.pjx_popover_panel import PJXPopoverPanel
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

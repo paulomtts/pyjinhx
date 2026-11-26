@@ -1,14 +1,14 @@
+from pyjinhx.builtins.pjx_button import PJXButton
+from pyjinhx.builtins.pjx_carousel import PJXCarousel
+from pyjinhx.builtins.pjx_carousel_slide import PJXCarouselSlide
+from pyjinhx.builtins.pjx_dropdown import PJXDropdown
 from pyjinhx.builtins.pjx_page_loader import PJXPageLoader
 from pyjinhx.builtins.pjx_region_loader import PJXRegionLoader
-from pyjinhx.builtins.ui.pjx_button import PJXButton
-from pyjinhx.builtins.ui.pjx_carousel import PJXCarousel
-from pyjinhx.builtins.ui.pjx_carousel_slide import PJXCarouselSlide
-from pyjinhx.builtins.ui.pjx_dropdown import PJXDropdown
-from pyjinhx.builtins.ui.pjx_tab import PJXTab
-from pyjinhx.builtins.ui.pjx_tab_group import PJXTabGroup
-from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
-from pyjinhx.builtins.ui.pjx_tab_panel import PJXTabPanel
-from pyjinhx.builtins.ui.pjx_toast_host import PJXToastHost
+from pyjinhx.builtins.pjx_tab import PJXTab
+from pyjinhx.builtins.pjx_tab_group import PJXTabGroup
+from pyjinhx.builtins.pjx_tab_list import PJXTabList
+from pyjinhx.builtins.pjx_tab_panel import PJXTabPanel
+from pyjinhx.builtins.pjx_toast_host import PJXToastHost
 
 
 def dropdown():

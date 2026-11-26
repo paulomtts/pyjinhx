@@ -3,8 +3,8 @@
 import pytest
 
 from pyjinhx import discovery
-from pyjinhx.builtins.ui.pjx_icon import PJXIcon
-from pyjinhx.builtins.ui.pjx_tab import PJXTab
+from pyjinhx.builtins.pjx_icon import PJXIcon
+from pyjinhx.builtins.pjx_tab import PJXTab
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_skeleton import PJXSkeleton
+from pyjinhx.builtins.pjx_skeleton import PJXSkeleton
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

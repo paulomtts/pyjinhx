@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx._component import BaseComponent, Slot
-from pyjinhx.builtins.ui.pjx_popover import PJXPopover
+from pyjinhx.builtins.pjx_popover import PJXPopover
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

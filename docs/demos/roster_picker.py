@@ -1,5 +1,5 @@
-from pyjinhx.builtins.ui.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
-from pyjinhx.builtins.ui.pjx_roster_results import PJXRosterResults
+from pyjinhx.builtins.pjx_roster_picker import PJXRosterItem, PJXRosterPicker
+from pyjinhx.builtins.pjx_roster_results import PJXRosterResults
 
 ROUTE = "/demo/people"
 

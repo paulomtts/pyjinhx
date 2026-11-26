@@ -20,7 +20,6 @@ SOURCE = (
     Path(__file__).resolve().parents[4]
     / "pyjinhx"
     / "builtins"
-    / "ui"
     / "pjx_graph"
     / "src"
     / "d3.vendor.js"

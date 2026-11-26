@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_card_footer import PJXCardFooter
+from pyjinhx.builtins.pjx_card_footer import PJXCardFooter
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

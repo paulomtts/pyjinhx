@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from pyjinhx import builtins
-from pyjinhx.builtins.ui.pjx_confirm_dialog import PJXConfirmDialog
+from pyjinhx.builtins.pjx_confirm_dialog import PJXConfirmDialog
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

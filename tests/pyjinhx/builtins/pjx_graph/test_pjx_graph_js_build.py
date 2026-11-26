@@ -13,14 +13,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_graph import PJXGraph
+from pyjinhx.builtins.pjx_graph import PJXGraph
 from pyjinhx.rendering import render
 
 if TYPE_CHECKING:
     from playwright.sync_api import Page
 
 ROOT = Path(__file__).resolve().parents[4]
-GRAPH_DIR = ROOT / "pyjinhx" / "builtins" / "ui" / "pjx_graph"
+GRAPH_DIR = ROOT / "pyjinhx" / "builtins" / "pjx_graph"
 ENGINE = GRAPH_DIR / "src" / "engine.js"
 D3 = GRAPH_DIR / "src" / "d3.vendor.js"
 SCRIPT = ROOT / "scripts" / "build_pjx_graph_js.py"

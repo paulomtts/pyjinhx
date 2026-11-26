@@ -10,8 +10,8 @@ does not currently honor; tracked as a pre-existing gap, not fixed by #532.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_notification import PJXNotification
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_notification import PJXNotification
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

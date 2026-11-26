@@ -24,7 +24,7 @@ from pyjinhx.builtins import (
 _ROOT = Path(__file__).resolve().parents[2]
 _GUIDE = _ROOT / "docs" / "guide" / "roster-picker.md"
 
-_UI = _ROOT / "pyjinhx" / "builtins" / "ui"
+_UI = _ROOT / "pyjinhx" / "builtins"
 _CSS = _UI / "pjx_roster_picker" / "pjx_roster_picker.css"
 _JS = _UI / "pjx_roster_picker" / "src" / "picker.js"
 _TEMPLATES = (

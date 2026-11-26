@@ -26,7 +26,7 @@ def read_vendored_htmx() -> str:
     return f"if (!window.htmx) {{\n{source}\n}}\n"
 
 
-# loading_indicator and page_loader live here rather than under builtins/ui/:
+# loading_indicator and page_loader live here rather than under builtins/:
 # they have no host element, no .pjx template and no per-request descriptor
 # to gate delivery on, so the L4 lazy-asset door doesn't apply — they ship
 # unconditionally with every cold render of the runtime.

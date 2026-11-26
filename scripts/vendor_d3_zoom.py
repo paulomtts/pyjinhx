@@ -1,4 +1,4 @@
-"""One-off generator for pyjinhx/builtins/ui/pjx_graph/src/d3.vendor.js.
+"""One-off generator for pyjinhx/builtins/pjx_graph/src/d3.vendor.js.
 
 Bundles the pinned d3 subset the graph engine needs (selection + zoom and their
 dependencies) into one minified IIFE bound to a private ``__pjxD3`` name, so no
@@ -46,8 +46,7 @@ HEADER = (
 )
 
 OUT = (
-    Path(__file__).resolve().parents[1]
-    / "pyjinhx/builtins/ui/pjx_graph/src/d3.vendor.js"
+    Path(__file__).resolve().parents[1] / "pyjinhx/builtins/pjx_graph/src/d3.vendor.js"
 )
 
 

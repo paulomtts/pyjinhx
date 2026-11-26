@@ -44,284 +44,261 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # _component.py for BaseComponent/Slot/AttrValue and its own vendored
     # data module; nothing above the leaf imports back.
     "builtins.__init__": frozenset(),
-    "builtins.ui.__init__": frozenset(),
-    "builtins.ui.pjx_badge.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_badge.pjx_badge"}
+    "builtins.pjx_badge.__init__": frozenset({"pyjinhx.builtins.pjx_badge.pjx_badge"}),
+    "builtins.pjx_badge.pjx_badge": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_avatar.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_avatar.pjx_avatar"}
     ),
-    "builtins.ui.pjx_badge.pjx_badge": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_avatar.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_avatar.pjx_avatar"}
+    "builtins.pjx_avatar.pjx_avatar": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_avatar_stack.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_avatar_stack.pjx_avatar_stack"}
     ),
-    "builtins.ui.pjx_avatar.pjx_avatar": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_avatar_stack.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_avatar_stack.pjx_avatar_stack"}
+    "builtins.pjx_avatar_stack.pjx_avatar_stack": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_divider.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_divider.pjx_divider"}
     ),
-    "builtins.ui.pjx_avatar_stack.pjx_avatar_stack": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_divider.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_divider.pjx_divider"}
+    "builtins.pjx_divider.pjx_divider": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_progress.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_progress.pjx_progress"}
     ),
-    "builtins.ui.pjx_divider.pjx_divider": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_progress.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_progress.pjx_progress"}
-    ),
-    "builtins.ui.pjx_progress.pjx_progress": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_button.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_button.pjx_button"}
+    "builtins.pjx_progress.pjx_progress": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_button.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_button.pjx_button"}
     ),
     # #693: the loading spinner is composed in Python as a component-typed
     # field instead of a <PJXRegionLoader/> tag literal, so this leaf now also
     # reaches down into the pjx_region_loader leaf.
-    "builtins.ui.pjx_button.pjx_button": frozenset(
+    "builtins.pjx_button.pjx_button": frozenset(
         {"pyjinhx._component", "pyjinhx.builtins.pjx_region_loader"}
     ),
-    "builtins.ui.pjx_chart.__init__": frozenset(
+    "builtins.pjx_chart.__init__": frozenset(
         {
-            "pyjinhx.builtins.ui.pjx_chart.pjx_chart",
-            "pyjinhx.builtins.ui.pjx_chart.series",
+            "pyjinhx.builtins.pjx_chart.pjx_chart",
+            "pyjinhx.builtins.pjx_chart.series",
         }
     ),
-    "builtins.ui.pjx_chart.pjx_chart": frozenset(
-        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_chart.series"}
+    "builtins.pjx_chart.pjx_chart": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.pjx_chart.series"}
     ),
-    "builtins.ui.pjx_chart.series": frozenset(),
-    "builtins.ui.pjx_chip_input.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_chip_input.pjx_chip_input"}
+    "builtins.pjx_chart.series": frozenset(),
+    "builtins.pjx_chip_input.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_chip_input.pjx_chip_input"}
     ),
-    "builtins.ui.pjx_chip_input.pjx_chip_input": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_form_field.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_form_field.pjx_form_field"}
+    "builtins.pjx_chip_input.pjx_chip_input": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_form_field.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_form_field.pjx_form_field"}
     ),
-    "builtins.ui.pjx_form_field.pjx_form_field": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_password_input.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_password_input.pjx_password_input"}
+    "builtins.pjx_form_field.pjx_form_field": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_password_input.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_password_input.pjx_password_input"}
     ),
-    "builtins.ui.pjx_password_input.pjx_password_input": frozenset(
+    "builtins.pjx_password_input.pjx_password_input": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_segmented_control.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_segmented_control.pjx_segmented_control"}
+    ),
+    "builtins.pjx_segmented_control.pjx_segmented_control": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_segmented_control.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_segmented_control.pjx_segmented_control"}
-    ),
-    "builtins.ui.pjx_segmented_control.pjx_segmented_control": frozenset(
-        {"pyjinhx._component"}
-    ),
-    "builtins.ui.pjx_roster_picker.__init__": frozenset(
+    "builtins.pjx_roster_picker.__init__": frozenset(
         {
-            "pyjinhx.builtins.ui.pjx_roster_picker.item",
-            "pyjinhx.builtins.ui.pjx_roster_picker.pjx_roster_picker",
+            "pyjinhx.builtins.pjx_roster_picker.item",
+            "pyjinhx.builtins.pjx_roster_picker.pjx_roster_picker",
         }
     ),
-    "builtins.ui.pjx_roster_picker.item": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_roster_picker.item": frozenset({"pyjinhx._component"}),
     # The picker composes one PJXRosterChip per item in Python, so it reaches
     # into the pjx_roster_chip leaf.
-    "builtins.ui.pjx_roster_picker.pjx_roster_picker": frozenset(
+    "builtins.pjx_roster_picker.pjx_roster_picker": frozenset(
         {
             "pyjinhx._component",
-            "pyjinhx.builtins.ui.pjx_roster_chip",
-            "pyjinhx.builtins.ui.pjx_roster_picker.item",
+            "pyjinhx.builtins.pjx_roster_chip",
+            "pyjinhx.builtins.pjx_roster_picker.item",
         }
     ),
-    "builtins.ui.pjx_roster_chip.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_roster_chip.pjx_roster_chip"}
+    "builtins.pjx_roster_chip.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_roster_chip.pjx_roster_chip"}
     ),
     # The avatar and icons are composed in Python, so this leaf reaches down
     # into the pjx_avatar and pjx_icon leaves.
-    "builtins.ui.pjx_roster_chip.pjx_roster_chip": frozenset(
+    "builtins.pjx_roster_chip.pjx_roster_chip": frozenset(
         {
             "pyjinhx._component",
-            "pyjinhx.builtins.ui.pjx_avatar",
-            "pyjinhx.builtins.ui.pjx_icon",
+            "pyjinhx.builtins.pjx_avatar",
+            "pyjinhx.builtins.pjx_icon",
         }
     ),
-    "builtins.ui.pjx_roster_results.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_roster_results.pjx_roster_results"}
+    "builtins.pjx_roster_results.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_roster_results.pjx_roster_results"}
     ),
     # The visuals, chips and lazy-load sentinel are composed in Python, so this
     # leaf reaches into the avatar, icon, chip and lazy-load leaves, and
     # sideways into the picker package for the item model.
-    "builtins.ui.pjx_roster_results.pjx_roster_results": frozenset(
+    "builtins.pjx_roster_results.pjx_roster_results": frozenset(
         {
             "pyjinhx._component",
             "pyjinhx.builtins.pjx_lazy_load",
-            "pyjinhx.builtins.ui.pjx_avatar",
-            "pyjinhx.builtins.ui.pjx_icon",
-            "pyjinhx.builtins.ui.pjx_roster_chip",
-            "pyjinhx.builtins.ui.pjx_roster_picker.item",
+            "pyjinhx.builtins.pjx_avatar",
+            "pyjinhx.builtins.pjx_icon",
+            "pyjinhx.builtins.pjx_roster_chip",
+            "pyjinhx.builtins.pjx_roster_picker.item",
         }
     ),
-    "builtins.ui.pjx_select.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_select.pjx_select"}
+    "builtins.pjx_select.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_select.pjx_select"}
     ),
-    "builtins.ui.pjx_select.pjx_select": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_toggle_switch.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_toggle_switch.pjx_toggle_switch"}
+    "builtins.pjx_select.pjx_select": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_toggle_switch.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_toggle_switch.pjx_toggle_switch"}
     ),
-    "builtins.ui.pjx_toggle_switch.pjx_toggle_switch": frozenset(
-        {"pyjinhx._component"}
+    "builtins.pjx_toggle_switch.pjx_toggle_switch": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_spinner.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_spinner.pjx_spinner"}
     ),
-    "builtins.ui.pjx_spinner.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_spinner.pjx_spinner"}
+    "builtins.pjx_spinner.pjx_spinner": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_stack.__init__": frozenset({"pyjinhx.builtins.pjx_stack.pjx_stack"}),
+    "builtins.pjx_stack.pjx_stack": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_skeleton.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_skeleton.pjx_skeleton"}
     ),
-    "builtins.ui.pjx_spinner.pjx_spinner": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_stack.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_stack.pjx_stack"}
+    "builtins.pjx_skeleton.pjx_skeleton": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_empty_state.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_empty_state.pjx_empty_state"}
     ),
-    "builtins.ui.pjx_stack.pjx_stack": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_skeleton.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_skeleton.pjx_skeleton"}
+    "builtins.pjx_empty_state.pjx_empty_state": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_card.__init__": frozenset({"pyjinhx.builtins.pjx_card.pjx_card"}),
+    "builtins.pjx_card.pjx_card": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_card_header.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_card_header.pjx_card_header"}
     ),
-    "builtins.ui.pjx_skeleton.pjx_skeleton": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_empty_state.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_empty_state.pjx_empty_state"}
+    "builtins.pjx_card_header.pjx_card_header": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_card_body.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_card_body.pjx_card_body"}
     ),
-    "builtins.ui.pjx_empty_state.pjx_empty_state": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_card.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_card.pjx_card"}
+    "builtins.pjx_card_body.pjx_card_body": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_card_footer.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_card_footer.pjx_card_footer"}
     ),
-    "builtins.ui.pjx_card.pjx_card": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_card_header.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_card_header.pjx_card_header"}
-    ),
-    "builtins.ui.pjx_card_header.pjx_card_header": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_card_body.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_card_body.pjx_card_body"}
-    ),
-    "builtins.ui.pjx_card_body.pjx_card_body": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_card_footer.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_card_footer.pjx_card_footer"}
-    ),
-    "builtins.ui.pjx_card_footer.pjx_card_footer": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_card_footer.pjx_card_footer": frozenset({"pyjinhx._component"}),
     # pjx_modal family (#517): the dialog shell plus its header/body/footer
     # regions. Each component module reaches down into _component.py only; each
     # __init__ just re-exports its class from its co-located module.
-    "builtins.ui.pjx_modal.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_modal.pjx_modal"}
+    "builtins.pjx_modal.__init__": frozenset({"pyjinhx.builtins.pjx_modal.pjx_modal"}),
+    "builtins.pjx_modal.pjx_modal": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_modal_header.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_modal_header.pjx_modal_header"}
     ),
-    "builtins.ui.pjx_modal.pjx_modal": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_modal_header.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_modal_header.pjx_modal_header"}
+    "builtins.pjx_modal_header.pjx_modal_header": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_modal_body.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_modal_body.pjx_modal_body"}
     ),
-    "builtins.ui.pjx_modal_header.pjx_modal_header": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_modal_body.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_modal_body.pjx_modal_body"}
+    "builtins.pjx_modal_body.pjx_modal_body": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_modal_footer.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_modal_footer.pjx_modal_footer"}
     ),
-    "builtins.ui.pjx_modal_body.pjx_modal_body": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_modal_footer.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_modal_footer.pjx_modal_footer"}
+    "builtins.pjx_modal_footer.pjx_modal_footer": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_confirm_dialog.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_confirm_dialog.pjx_confirm_dialog"}
     ),
-    "builtins.ui.pjx_modal_footer.pjx_modal_footer": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_confirm_dialog.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog"}
+    "builtins.pjx_confirm_dialog.pjx_confirm_dialog": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_prompt_dialog.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_prompt_dialog.pjx_prompt_dialog"}
     ),
-    "builtins.ui.pjx_confirm_dialog.pjx_confirm_dialog": frozenset(
-        {"pyjinhx._component"}
-    ),
-    "builtins.ui.pjx_prompt_dialog.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_prompt_dialog.pjx_prompt_dialog"}
-    ),
-    "builtins.ui.pjx_prompt_dialog.pjx_prompt_dialog": frozenset(
-        {"pyjinhx._component"}
-    ),
+    "builtins.pjx_prompt_dialog.pjx_prompt_dialog": frozenset({"pyjinhx._component"}),
     # pjx_drawer family (#518): the slide-in dialog shell plus its
     # header/body/footer regions. Same shape as the modal family — each
     # component module reaches down into _component.py only; each __init__ just
     # re-exports its class from its co-located module.
-    "builtins.ui.pjx_drawer.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_drawer.pjx_drawer"}
+    "builtins.pjx_drawer.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_drawer.pjx_drawer"}
     ),
-    "builtins.ui.pjx_drawer.pjx_drawer": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_drawer_header.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_drawer_header.pjx_drawer_header"}
+    "builtins.pjx_drawer.pjx_drawer": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_drawer_header.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_drawer_header.pjx_drawer_header"}
     ),
-    "builtins.ui.pjx_drawer_header.pjx_drawer_header": frozenset(
-        {"pyjinhx._component"}
+    "builtins.pjx_drawer_header.pjx_drawer_header": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_drawer_body.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_drawer_body.pjx_drawer_body"}
     ),
-    "builtins.ui.pjx_drawer_body.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_drawer_body.pjx_drawer_body"}
+    "builtins.pjx_drawer_body.pjx_drawer_body": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_drawer_footer.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_drawer_footer.pjx_drawer_footer"}
     ),
-    "builtins.ui.pjx_drawer_body.pjx_drawer_body": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_drawer_footer.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_drawer_footer.pjx_drawer_footer"}
-    ),
-    "builtins.ui.pjx_drawer_footer.pjx_drawer_footer": frozenset(
-        {"pyjinhx._component"}
-    ),
+    "builtins.pjx_drawer_footer.pjx_drawer_footer": frozenset({"pyjinhx._component"}),
     # pjx_accordion family (#519): the details/summary shell plus its
     # group/trigger/content parts. Same shape as the modal/drawer families —
     # each component module reaches down into _component.py only; each
     # __init__ just re-exports its class from its co-located module.
-    "builtins.ui.pjx_accordion.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_accordion.pjx_accordion"}
+    "builtins.pjx_accordion.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_accordion.pjx_accordion"}
     ),
-    "builtins.ui.pjx_accordion.pjx_accordion": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_accordion_content.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_accordion_content.pjx_accordion_content"}
+    "builtins.pjx_accordion.pjx_accordion": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_accordion_content.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_accordion_content.pjx_accordion_content"}
     ),
-    "builtins.ui.pjx_accordion_content.pjx_accordion_content": frozenset(
+    "builtins.pjx_accordion_content.pjx_accordion_content": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_accordion_group.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_accordion_group.pjx_accordion_group"}
+    "builtins.pjx_accordion_group.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_accordion_group.pjx_accordion_group"}
     ),
-    "builtins.ui.pjx_accordion_group.pjx_accordion_group": frozenset(
+    "builtins.pjx_accordion_group.pjx_accordion_group": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_accordion_trigger.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger"}
+    "builtins.pjx_accordion_trigger.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_accordion_trigger.pjx_accordion_trigger"}
     ),
     # #693: the chevron is composed in Python as a component-typed field
     # instead of a <PJXIcon/> tag literal, so this leaf now also reaches down
     # into the pjx_icon leaf.
-    "builtins.ui.pjx_accordion_trigger.pjx_accordion_trigger": frozenset(
-        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_icon"}
+    "builtins.pjx_accordion_trigger.pjx_accordion_trigger": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.pjx_icon"}
     ),
     # pjx_tab family (#520): the group shell, its tablist, the tab triggers
     # and the panels they reveal. Only the group carries JS; the tab template
     # reaches PJXIcon through discovery's tag map, not a Python import, so no
     # leaf gains an edge beyond _component.py.
-    "builtins.ui.pjx_tab_group.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tab_group.pjx_tab_group"}
+    "builtins.pjx_tab_group.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tab_group.pjx_tab_group"}
     ),
-    "builtins.ui.pjx_tab_group.pjx_tab_group": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_tab_list.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tab_list.pjx_tab_list"}
+    "builtins.pjx_tab_group.pjx_tab_group": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tab_list.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tab_list.pjx_tab_list"}
     ),
-    "builtins.ui.pjx_tab_list.pjx_tab_list": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_tab.__init__": frozenset({"pyjinhx.builtins.ui.pjx_tab.pjx_tab"}),
-    "builtins.ui.pjx_tab.pjx_tab": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_tab_panel.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tab_panel.pjx_tab_panel"}
+    "builtins.pjx_tab_list.pjx_tab_list": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tab.__init__": frozenset({"pyjinhx.builtins.pjx_tab.pjx_tab"}),
+    "builtins.pjx_tab.pjx_tab": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tab_panel.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tab_panel.pjx_tab_panel"}
     ),
-    "builtins.ui.pjx_tab_panel.pjx_tab_panel": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tab_panel.pjx_tab_panel": frozenset({"pyjinhx._component"}),
     # pjx_popover family (#521): the positioned root shell, its trigger, and
     # the panel it reveals. JS/CSS live only on the root; each leaf reaches
     # _component.py only.
-    "builtins.ui.pjx_popover.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_popover.pjx_popover"}
+    "builtins.pjx_popover.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_popover.pjx_popover"}
     ),
-    "builtins.ui.pjx_popover.pjx_popover": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_popover_trigger.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_popover_trigger.pjx_popover_trigger"}
+    "builtins.pjx_popover.pjx_popover": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_popover_trigger.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_popover_trigger.pjx_popover_trigger"}
     ),
-    "builtins.ui.pjx_popover_trigger.pjx_popover_trigger": frozenset(
+    "builtins.pjx_popover_trigger.pjx_popover_trigger": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_popover_panel.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_popover_panel.pjx_popover_panel"}
+    "builtins.pjx_popover_panel.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_popover_panel.pjx_popover_panel"}
     ),
-    "builtins.ui.pjx_popover_panel.pjx_popover_panel": frozenset(
-        {"pyjinhx._component"}
-    ),
+    "builtins.pjx_popover_panel.pjx_popover_panel": frozenset({"pyjinhx._component"}),
     # pjx_tooltip family (#522): the positioned root shell, its focusable
     # trigger, and the hidden tip. JS/CSS live only on the root; each leaf
     # reaches _component.py only.
-    "builtins.ui.pjx_tooltip.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tooltip.pjx_tooltip"}
+    "builtins.pjx_tooltip.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tooltip.pjx_tooltip"}
     ),
-    "builtins.ui.pjx_tooltip.pjx_tooltip": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_tooltip_trigger.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger"}
+    "builtins.pjx_tooltip.pjx_tooltip": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tooltip_trigger.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tooltip_trigger.pjx_tooltip_trigger"}
     ),
-    "builtins.ui.pjx_tooltip_trigger.pjx_tooltip_trigger": frozenset(
+    "builtins.pjx_tooltip_trigger.pjx_tooltip_trigger": frozenset(
         {"pyjinhx._component"}
     ),
     # pjx_dropdown family (#523): a single trigger+menu component reusing
@@ -329,100 +306,90 @@ ALLOWED_INTERNAL_IMPORTS: dict[str, frozenset[str]] = {
     # edge — PJXDropdown extends PJXPopover so the descriptor's asset walk
     # inherits pjx_popover.js instead of shipping the markup contract with
     # no script behind it.
-    "builtins.ui.pjx_dropdown.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_dropdown.pjx_dropdown"}
+    "builtins.pjx_dropdown.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_dropdown.pjx_dropdown"}
     ),
-    "builtins.ui.pjx_dropdown.pjx_dropdown": frozenset(
-        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_popover"}
+    "builtins.pjx_dropdown.pjx_dropdown": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.pjx_popover"}
     ),
-    "builtins.ui.pjx_breadcrumb.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_breadcrumb.pjx_breadcrumb"}
+    "builtins.pjx_breadcrumb.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_breadcrumb.pjx_breadcrumb"}
     ),
-    "builtins.ui.pjx_breadcrumb.pjx_breadcrumb": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_tooltip_content.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_tooltip_content.pjx_tooltip_content"}
+    "builtins.pjx_breadcrumb.pjx_breadcrumb": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_tooltip_content.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_tooltip_content.pjx_tooltip_content"}
     ),
-    "builtins.ui.pjx_tooltip_content.pjx_tooltip_content": frozenset(
+    "builtins.pjx_tooltip_content.pjx_tooltip_content": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_notification.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_notification.pjx_notification"}
+    "builtins.pjx_notification.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_notification.pjx_notification"}
     ),
-    "builtins.ui.pjx_notification.pjx_notification": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_alert.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_alert.pjx_alert"}
+    "builtins.pjx_notification.pjx_notification": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_alert.__init__": frozenset({"pyjinhx.builtins.pjx_alert.pjx_alert"}),
+    "builtins.pjx_alert.pjx_alert": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_toast_host.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_toast_host.pjx_toast_host"}
     ),
-    "builtins.ui.pjx_alert.pjx_alert": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_toast_host.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_toast_host.pjx_toast_host"}
+    "builtins.pjx_toast_host.pjx_toast_host": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_icon.__init__": frozenset({"pyjinhx.builtins.pjx_icon.pjx_icon"}),
+    "builtins.pjx_icon._icons": frozenset(),
+    "builtins.pjx_icon.pjx_icon": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.pjx_icon._icons"}
     ),
-    "builtins.ui.pjx_toast_host.pjx_toast_host": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_icon.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_icon.pjx_icon"}
-    ),
-    "builtins.ui.pjx_icon._icons": frozenset(),
-    "builtins.ui.pjx_icon.pjx_icon": frozenset(
-        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_icon._icons"}
-    ),
-    "builtins.ui.pjx_carousel.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_carousel.pjx_carousel"}
+    "builtins.pjx_carousel.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_carousel.pjx_carousel"}
     ),
     # #693: the four arrow/autoplay icons are composed in Python as
     # component-typed fields instead of <PJXIcon/> tag literals, so this leaf
     # now also reaches down into the pjx_icon leaf.
-    "builtins.ui.pjx_carousel.pjx_carousel": frozenset(
-        {"pyjinhx._component", "pyjinhx.builtins.ui.pjx_icon"}
+    "builtins.pjx_carousel.pjx_carousel": frozenset(
+        {"pyjinhx._component", "pyjinhx.builtins.pjx_icon"}
     ),
-    "builtins.ui.pjx_carousel_slide.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_carousel_slide.pjx_carousel_slide"}
+    "builtins.pjx_carousel_slide.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_carousel_slide.pjx_carousel_slide"}
     ),
-    "builtins.ui.pjx_carousel_slide.pjx_carousel_slide": frozenset(
+    "builtins.pjx_carousel_slide.pjx_carousel_slide": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph.__init__": frozenset({"pyjinhx.builtins.pjx_graph.pjx_graph"}),
+    "builtins.pjx_graph.pjx_graph": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph_controls.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_graph_controls.pjx_graph_controls"}
+    ),
+    "builtins.pjx_graph_controls.pjx_graph_controls": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph_edges.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_graph_edges.pjx_graph_edges"}
+    ),
+    "builtins.pjx_graph_edges.pjx_graph_edges": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph_node.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_graph_node.pjx_graph_node"}
+    ),
+    "builtins.pjx_graph_node.pjx_graph_node": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph_nodes.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_graph_nodes.pjx_graph_nodes"}
+    ),
+    "builtins.pjx_graph_nodes.pjx_graph_nodes": frozenset({"pyjinhx._component"}),
+    "builtins.pjx_graph_side_panel.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_graph_side_panel.pjx_graph_side_panel"}
+    ),
+    "builtins.pjx_graph_side_panel.pjx_graph_side_panel": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_graph.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph.pjx_graph"}
+    "builtins.pjx_resizable_group.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_resizable_group.pjx_resizable_group"}
     ),
-    "builtins.ui.pjx_graph.pjx_graph": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_graph_controls.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph_controls.pjx_graph_controls"}
-    ),
-    "builtins.ui.pjx_graph_controls.pjx_graph_controls": frozenset(
+    "builtins.pjx_resizable_group.pjx_resizable_group": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_graph_edges.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph_edges.pjx_graph_edges"}
+    "builtins.pjx_resizable_panel.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_resizable_panel.pjx_resizable_panel"}
     ),
-    "builtins.ui.pjx_graph_edges.pjx_graph_edges": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_graph_node.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph_node.pjx_graph_node"}
-    ),
-    "builtins.ui.pjx_graph_node.pjx_graph_node": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_graph_nodes.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph_nodes.pjx_graph_nodes"}
-    ),
-    "builtins.ui.pjx_graph_nodes.pjx_graph_nodes": frozenset({"pyjinhx._component"}),
-    "builtins.ui.pjx_graph_side_panel.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel"}
-    ),
-    "builtins.ui.pjx_graph_side_panel.pjx_graph_side_panel": frozenset(
+    "builtins.pjx_resizable_panel.pjx_resizable_panel": frozenset(
         {"pyjinhx._component"}
     ),
-    "builtins.ui.pjx_resizable_group.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_resizable_group.pjx_resizable_group"}
+    "builtins.pjx_resizable_handle.__init__": frozenset(
+        {"pyjinhx.builtins.pjx_resizable_handle.pjx_resizable_handle"}
     ),
-    "builtins.ui.pjx_resizable_group.pjx_resizable_group": frozenset(
-        {"pyjinhx._component"}
-    ),
-    "builtins.ui.pjx_resizable_panel.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_resizable_panel.pjx_resizable_panel"}
-    ),
-    "builtins.ui.pjx_resizable_panel.pjx_resizable_panel": frozenset(
-        {"pyjinhx._component"}
-    ),
-    "builtins.ui.pjx_resizable_handle.__init__": frozenset(
-        {"pyjinhx.builtins.ui.pjx_resizable_handle.pjx_resizable_handle"}
-    ),
-    "builtins.ui.pjx_resizable_handle.pjx_resizable_handle": frozenset(
+    "builtins.pjx_resizable_handle.pjx_resizable_handle": frozenset(
         {"pyjinhx._component"}
     ),
     # The classless factory is a consumer: it validates a tag name, reads the

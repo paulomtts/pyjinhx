@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_divider import PJXDivider
-from pyjinhx.builtins.ui.pjx_drawer_body import PJXDrawerBody
+from pyjinhx.builtins.pjx_divider import PJXDivider
+from pyjinhx.builtins.pjx_drawer_body import PJXDrawerBody
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

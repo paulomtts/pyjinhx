@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.pjx_spinner import PJXSpinner
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

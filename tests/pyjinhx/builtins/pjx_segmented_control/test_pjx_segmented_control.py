@@ -10,7 +10,7 @@ port.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_segmented_control import PJXSegmentedControl
+from pyjinhx.builtins.pjx_segmented_control import PJXSegmentedControl
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

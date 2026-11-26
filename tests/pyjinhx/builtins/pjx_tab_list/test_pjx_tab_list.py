@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyjinhx.builtins.ui.pjx_tab_list import PJXTabList
+from pyjinhx.builtins.pjx_tab_list import PJXTabList
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 

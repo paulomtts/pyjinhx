@@ -9,8 +9,7 @@ import pytest
 
 from pyjinhx.client import read_pjx_theme_css
 
-UI = Path(__file__).parents[3] / "pyjinhx" / "builtins" / "ui"
-BUILTINS = UI.parent
+BUILTINS = Path(__file__).parents[3] / "pyjinhx" / "builtins"
 
 # Copied from tests/pyjinhx/builtins/test_feedback_theme_tokens.py: the tests
 # tree has no __init__.py files, so test modules cannot import each other reliably.
@@ -24,12 +23,12 @@ BARE_HEX = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 
 # Paths relative to pyjinhx/builtins; one line per migrated stylesheet.
 NAVIGATION_SHEETS = [
-    "ui/pjx_tab_group/pjx_tab_group.css",
-    "ui/pjx_tab/pjx_tab.css",
-    "ui/pjx_breadcrumb/pjx_breadcrumb.css",
+    "pjx_tab_group/pjx_tab_group.css",
+    "pjx_tab/pjx_tab.css",
+    "pjx_breadcrumb/pjx_breadcrumb.css",
     "pjx_paginator/pjx_paginator.css",
-    "ui/pjx_resizable_handle/pjx_resizable_handle.css",
-    "ui/pjx_accordion_trigger/pjx_accordion_trigger.css",
+    "pjx_resizable_handle/pjx_resizable_handle.css",
+    "pjx_accordion_trigger/pjx_accordion_trigger.css",
 ]
 
 
@@ -41,7 +40,7 @@ def light(token: str) -> str:
 
 
 def read(path: str) -> str:
-    return (UI / path).read_text(encoding="utf-8")
+    return (BUILTINS / path).read_text(encoding="utf-8")
 
 
 def read_builtin(path: str) -> str:

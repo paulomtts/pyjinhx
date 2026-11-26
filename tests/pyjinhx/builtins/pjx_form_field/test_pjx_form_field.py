@@ -11,7 +11,7 @@ region-loader leg.
 import pytest
 from pydantic import ValidationError
 
-from pyjinhx.builtins.ui.pjx_form_field import PJXFormField
+from pyjinhx.builtins.pjx_form_field import PJXFormField
 from pyjinhx.client import read_pjx_theme_css
 
 
@@ -46,7 +46,7 @@ class TestFields:
             PJXFormField(id="ff", **{"data-test": "1"})  # type: ignore[arg-type]
 
 
-from pyjinhx.builtins.ui.pjx_spinner import PJXSpinner
+from pyjinhx.builtins.pjx_spinner import PJXSpinner
 from pyjinhx.rendering import render
 from pyjinhx.session import RenderSession
 
